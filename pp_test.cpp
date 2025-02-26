@@ -45,7 +45,8 @@ static std::string stringify(const std::vector<PPToken> &pp_tokens) {
 
 void pp_test() {
 	std::vector<std::string> tests = {
-		"100-a"
+		"100-a",
+		"100-character-literals"
 	};
 
 	for (auto &test: tests) {

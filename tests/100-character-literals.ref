@@ -1,0 +1,11 @@
+character-constant 'f'
+new-line
+character-constant 'foo'
+new-line
+new-line
+identifier r
+character-constant 'bar'
+new-line
+character-constant L'baz'
+new-line
+new-line
