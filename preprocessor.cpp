@@ -21,16 +21,6 @@ static Locus calculate_locus(
     return Locus { file, lines + 1, last_line_size + 1 };
 }
 
-static char peek(const std::string &input, int i = 0) {
-    if (input.size() <= i) return '\0';
-    else return input[i];
-}
-
-static std::string skip(const std::string &input, int i = 1) {
-    if (input.empty()) return "";
-    return input.substr(i);
-}
-
 std::vector<PPToken> pp_scan(const std::string &file, std::string input) {
     const static std::regex patterns(
         R"((\n)|)" // new-line
