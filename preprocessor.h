@@ -12,12 +12,13 @@ struct PPToken {
 	Locus locus;
 
 	enum {
-		kWhitespace,
+	    kReserved,
 		kNewLine,
-		kHeaderName,
-		kIdentifier,
-		kPPNumber,
 		kCharacterConstant,
+		kIdentifier,
+		kWhitespace,
+		kHeaderName,
+		kPPNumber,
 		kStringLiteral,
 		kOperator,
 		kPunctuator,
