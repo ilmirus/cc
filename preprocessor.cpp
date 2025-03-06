@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <stdexcept>
 #include <regex>
+#include <iostream>
 
 static Locus calculate_locus(
     const std::string &file,
@@ -25,7 +26,12 @@ std::vector<PPToken> pp_scan(const std::string &file, std::string input) {
     const static std::regex patterns(
         R"((\n)|)" // new-line
         R"((L?'.*(?:'|$))|)" // character-constant
-        R"(([_a-zA-Z][_a-zA-Z0-9]*))" // identifier
+        R"(([_a-zA-Z][_a-zA-Z0-9]*)|)" // identifier
+        "((?:"
+            R"((?://.*(?=\n|$))|)" // singleline-comment
+            R"((?:/\*[\s\S]*?\*/)|)" // multiline-comment
+            R"((?:[ \t\r\f\v]+))" // whitespace
+        ")+)"
     );
 
     std::string initial = input;
@@ -42,6 +48,8 @@ std::vector<PPToken> pp_scan(const std::string &file, std::string input) {
             token.kind = PPToken::kCharacterConstant;
         } else if (match[PPToken::kIdentifier].matched) {
             token.kind = PPToken::kIdentifier;
+        } else if (match[PPToken::kWhitespace].matched) {
+            token.kind = PPToken::kWhitespace;
         }
 
         result.push_back(token);

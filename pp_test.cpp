@@ -46,7 +46,8 @@ static std::string stringify(const std::vector<PPToken> &pp_tokens) {
 void pp_test() {
 	std::vector<std::string> tests = {
 		"100-a",
-		"100-character-literals"
+		"100-character-literals",
+		"100-comments"
 	};
 
 	for (auto &test: tests) {
@@ -57,7 +58,7 @@ void pp_test() {
 		for (size_t i = 0; i < std::min(got.size(), expected.size()); i++) {
 			if (expected[i] != stringify(got[i])) {
 				throw std::logic_error(
-					test + ": mismatch on line " + std::to_string(i) +
+					test + ": mismatch on line " + std::to_string(i + 1) +
 						" expected:\n" + expected[i] + "\ngot\n" + stringify(got[i])
 				);
 			}

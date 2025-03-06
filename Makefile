@@ -3,3 +3,6 @@ pp: main.cpp preprocessor.cpp preprocessor.h pp_test.cpp pp_test.h file_utils.cp
 
 clean:
 	rm pp
+
+test: pp
+	./pp
