@@ -3,10 +3,7 @@
 #include <string>
 #include <vector>
 
-struct Locus {
-	std::string file;
-	int row, column;
-};
+#include "pp_input.h"
 
 struct PPToken {
 	Locus locus;

@@ -6,6 +6,8 @@
 #include <regex>
 #include <iostream>
 
+#include "pp_input.h"
+
 static Locus calculate_locus(
     const std::string &file,
     const std::string &initial,
@@ -38,12 +40,13 @@ std::vector<PPToken> pp_scan(const std::string &file, std::string input) {
         "(.)" // anything else
     );
 
-    std::string initial = input;
-    std::smatch match;
+    std::match_results<PPInput::Iterator> match;
     std::vector<PPToken> result;
+    PPInput pp_input { input };
+    auto iter = pp_input.begin(), end = pp_input.end();
 
     auto locus = Locus { file, 1, 1 };
-    while (std::regex_search(input, match, patterns)) {
+    while (std::regex_search(iter, end, match, patterns)) {
         PPToken token { locus, PPToken::kReserved, match.str(0) };
         if (match[PPToken::kNewLine].matched) {
             token.kind = PPToken::kNewLine;
@@ -67,11 +70,11 @@ std::vector<PPToken> pp_scan(const std::string &file, std::string input) {
 
         result.push_back(token);
 
-        input = input.substr(match.position() + match.length());
-        locus = calculate_locus(file, initial, input);
+        iter += match.length();
+        locus = calculate_locus(file, input, iter.ptr);
     }
     if (!result.empty() && result.back().kind != PPToken::kNewLine) {
-        result.push_back(PPToken { calculate_locus(file, initial, input), PPToken::kNewLine, "" });
+        result.push_back(PPToken { calculate_locus(file, input, iter.ptr), PPToken::kNewLine, "" });
     }
     return result;
 }
