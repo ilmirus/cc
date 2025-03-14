@@ -71,6 +71,5 @@ struct PPInput {
     };
 
     Iterator begin() { return Iterator(raw.data()); }
-
     Iterator end() { return Iterator(raw.data() + raw.size()); }
 };

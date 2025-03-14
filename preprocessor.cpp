@@ -33,8 +33,8 @@ std::vector<PPToken> pp_scan(const std::string &file, std::string input) {
         R"((L?".*?(?:"|$))|)" // string-literal
         R"(([_a-zA-Z][_a-zA-Z0-9]*)|)" // identifier
         "((?:"
-            R"((?://.*(?=\n|$))|)" // singleline-comment
-            R"((?:/\*[\s\S]*?\*/)|)" // multiline-comment
+            R"((?://.*?(?=\n|$))|)" // singleline-comment
+            R"((?:/\*[\s\S]*?(?:\*/|\z))|)" // multiline-comment
             R"((?:[ \t\r\f\v]+))" // whitespace
         ")+)|"
         R"((\.?[0-9](?:[eE][+-]|\.|[0-9a-zA-Z_])*)|)" // pp-number
