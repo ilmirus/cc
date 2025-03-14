@@ -49,7 +49,8 @@ void pp_test() {
 		"100-character-literals",
 		"100-comments",
 		"100-empty",
-		"100-floating"
+		"100-floating",
+		"100-integer-zero"
 	};
 
 	for (auto &test: tests) {

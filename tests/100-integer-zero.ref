@@ -1,0 +1,8 @@
+pp-number 0
+whitespace
+pp-number 0x0
+whitespace
+pp-number 00
+whitespace
+pp-number 000000000000000000000000000
+new-line
