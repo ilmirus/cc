@@ -17,12 +17,12 @@ struct PPToken {
 		kCharacterConstant,
 		kIdentifier,
 		kWhitespace,
-		kHeaderName,
 		kPPNumber,
-		kStringLiteral,
 		kOperator,
-		kPunctuator,
-		kNonWhiteSpace
+		kNonWhiteSpace,
+		kHeaderName,
+		kStringLiteral,
+		kPunctuator
 	} kind;
 
 	std::string value;

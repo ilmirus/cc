@@ -38,7 +38,7 @@ static std::string stringify(const PPToken &pp_token) {
 static std::string stringify(const std::vector<PPToken> &pp_tokens) {
 	std::string result;
 	for (auto &pp_token: pp_tokens) {
-		result += stringify(pp_token);
+		result += stringify(pp_token) + "\n";
 	}
 	return result;
 }
@@ -48,7 +48,8 @@ void pp_test() {
 		"100-a",
 		"100-character-literals",
 		"100-comments",
-		"100-empty"
+		"100-empty",
+		"100-floating"
 	};
 
 	for (auto &test: tests) {

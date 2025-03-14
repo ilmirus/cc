@@ -1,0 +1,20 @@
+pp-number 0.0
+new-line
+pp-number 0....1
+new-line
+pp-number 0.0e+3
+new-line
+pp-number 0.24512..E-
+new-line
+pp-number 0...e+
+new-line
+pp-number 0efsa
+operator -
+new-line
+pp-number 21412e421
+new-line
+pp-number 241E421
+new-line
+pp-number 12e...2
+new-line
+new-line

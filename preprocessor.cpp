@@ -31,7 +31,10 @@ std::vector<PPToken> pp_scan(const std::string &file, std::string input) {
             R"((?://.*(?=\n|$))|)" // singleline-comment
             R"((?:/\*[\s\S]*?\*/)|)" // multiline-comment
             R"((?:[ \t\r\f\v]+))" // whitespace
-        ")+)"
+        ")+)|"
+        R"((\.?[0-9](?:[eE][+-]|\.|[0-9a-zA-Z_])*)|)" // pp-number
+        R"((-|\+)|)" // operator
+        "(.)" // anything else
     );
 
     std::string initial = input;
@@ -50,6 +53,12 @@ std::vector<PPToken> pp_scan(const std::string &file, std::string input) {
             token.kind = PPToken::kIdentifier;
         } else if (match[PPToken::kWhitespace].matched) {
             token.kind = PPToken::kWhitespace;
+        } else if (match[PPToken::kPPNumber].matched) {
+            token.kind = PPToken::kPPNumber;
+        } else if (match[PPToken::kOperator].matched) {
+            token.kind = PPToken::kOperator;
+        } else if (match[PPToken::kNonWhiteSpace].matched) {
+            token.kind = PPToken::kNonWhiteSpace;
         }
 
         result.push_back(token);
