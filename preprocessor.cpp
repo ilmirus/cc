@@ -18,8 +18,10 @@ static Locus calculate_locus(
     int last_line_size = 0;
     auto last_new_line = prefix.find_last_of('\n');
     if (last_new_line != std::string::npos) {
-        auto last_line = prefix.substr(last_new_line);
+        auto last_line = prefix.substr(last_new_line + 1);
         last_line_size = last_line.size();
+    } else {
+        last_line_size = prefix.size();
     }
     return Locus { file, lines + 1, last_line_size + 1 };
 }
