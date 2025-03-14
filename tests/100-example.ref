@@ -1,0 +1,9 @@
+identifier foo
+whitespace
+pp-number 1.0e2
+whitespace
+operator *=
+non-whitespace @
+whitespace
+string-literal "bar"
+new-line

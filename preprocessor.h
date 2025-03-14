@@ -15,13 +15,13 @@ struct PPToken {
 	    kReserved,
 		kNewLine,
 		kCharacterConstant,
+		kStringLiteral,
 		kIdentifier,
 		kWhitespace,
 		kPPNumber,
 		kOperator,
 		kNonWhiteSpace,
 		kHeaderName,
-		kStringLiteral,
 		kPunctuator
 	} kind;
 

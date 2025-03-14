@@ -25,7 +25,8 @@ static Locus calculate_locus(
 std::vector<PPToken> pp_scan(const std::string &file, std::string input) {
     const static std::regex patterns(
         R"((\n)|)" // new-line
-        R"((L?'.*(?:'|$))|)" // character-constant
+        R"((L?'.*?(?:'|$))|)" // character-constant
+        R"((L?".*?(?:"|$))|)" // string-literal
         R"(([_a-zA-Z][_a-zA-Z0-9]*)|)" // identifier
         "((?:"
             R"((?://.*(?=\n|$))|)" // singleline-comment
@@ -33,7 +34,7 @@ std::vector<PPToken> pp_scan(const std::string &file, std::string input) {
             R"((?:[ \t\r\f\v]+))" // whitespace
         ")+)|"
         R"((\.?[0-9](?:[eE][+-]|\.|[0-9a-zA-Z_])*)|)" // pp-number
-        R"((-|\+)|)" // operator
+        R"((-|\+|\*=)|)" // operator
         "(.)" // anything else
     );
 
@@ -49,6 +50,9 @@ std::vector<PPToken> pp_scan(const std::string &file, std::string input) {
         } else if (match[PPToken::kCharacterConstant].matched) {
             if (!match.str(0).ends_with("'")) throw std::runtime_error("Unclosed character constant");
             token.kind = PPToken::kCharacterConstant;
+        } else if (match[PPToken::kStringLiteral].matched) {
+            if (!match.str(0).ends_with("\"")) throw std::runtime_error("Unclosed string literal");
+            token.kind = PPToken::kStringLiteral;
         } else if (match[PPToken::kIdentifier].matched) {
             token.kind = PPToken::kIdentifier;
         } else if (match[PPToken::kWhitespace].matched) {

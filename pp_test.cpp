@@ -50,7 +50,8 @@ void pp_test() {
 		"100-comments",
 		"100-empty",
 		"100-floating",
-		"100-integer-zero"
+		"100-integer-zero",
+		"100-example"
 	};
 
 	for (auto &test: tests) {
