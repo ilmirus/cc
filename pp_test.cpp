@@ -47,7 +47,8 @@ void pp_test() {
 	std::vector<std::string> tests = {
 		"100-a",
 		"100-character-literals",
-		"100-comments"
+		"100-comments",
+		"100-empty"
 	};
 
 	for (auto &test: tests) {
