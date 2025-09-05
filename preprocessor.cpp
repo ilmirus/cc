@@ -28,18 +28,7 @@ static Locus calculate_locus(
 
 std::vector<PPToken> pp_scan(const std::string &file, std::string input) {
     const static std::regex patterns(
-        R"((\n)|)" // new-line
-        R"((L?'.*?(?:'|$))|)" // character-constant
-        R"((L?".*?(?:"|$))|)" // string-literal
-        R"(([_a-zA-Z][_a-zA-Z0-9]*)|)" // identifier
-        "((?:"
-            R"((?://.*?(?=\n|$))|)" // singleline-comment
-            R"((?:/\*[\s\S]*?(?:\*/|\z))|)" // multiline-comment
-            R"((?:[ \t\r\f\v]+))" // whitespace
-        ")+)|"
-        R"((\.?[0-9](?:[eE][+-]|\.|[0-9a-zA-Z_])*)|)" // pp-number
-        R"((-|\+|\*=)|)" // operator
-        "(.)" // anything else
+#include "pptoken.regex.generated.cpp"
     );
 
     std::match_results<PPInput::Iterator> match;
@@ -49,27 +38,8 @@ std::vector<PPToken> pp_scan(const std::string &file, std::string input) {
 
     auto locus = Locus { file, 1, 1 };
     while (std::regex_search(iter, end, match, patterns)) {
-        PPToken token { locus, PPToken::kReserved, match.str(0) };
-        if (match[PPToken::kNewLine].matched) {
-            token.kind = PPToken::kNewLine;
-        } else if (match[PPToken::kCharacterConstant].matched) {
-            if (!match.str(0).ends_with("'")) throw std::runtime_error("Unclosed character constant");
-            token.kind = PPToken::kCharacterConstant;
-        } else if (match[PPToken::kStringLiteral].matched) {
-            if (!match.str(0).ends_with("\"")) throw std::runtime_error("Unclosed string literal");
-            token.kind = PPToken::kStringLiteral;
-        } else if (match[PPToken::kIdentifier].matched) {
-            token.kind = PPToken::kIdentifier;
-        } else if (match[PPToken::kWhitespace].matched) {
-            token.kind = PPToken::kWhitespace;
-        } else if (match[PPToken::kPPNumber].matched) {
-            token.kind = PPToken::kPPNumber;
-        } else if (match[PPToken::kOperator].matched) {
-            token.kind = PPToken::kOperator;
-        } else if (match[PPToken::kNonWhiteSpace].matched) {
-            token.kind = PPToken::kNonWhiteSpace;
-        }
-
+        PPToken token { locus, PPToken::kInvalid, match.str(0) };
+#include "pptoken.match.generated.cpp"
         result.push_back(token);
 
         iter += match.length();

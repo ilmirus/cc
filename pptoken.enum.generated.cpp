@@ -1,0 +1,9 @@
+kNewLine,
+kCharacterConstant,
+kStringLiteral,
+kIdentifier,
+kWhitespace,
+kPPNumber,
+kOperator,
+kNonWhiteSpace,
+kInvalid

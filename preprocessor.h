@@ -9,17 +9,7 @@ struct PPToken {
 	Locus locus;
 
 	enum {
-	    kReserved,
-		kNewLine,
-		kCharacterConstant,
-		kStringLiteral,
-		kIdentifier,
-		kWhitespace,
-		kPPNumber,
-		kOperator,
-		kNonWhiteSpace,
-		kHeaderName,
-		kPunctuator
+#include "pptoken.enum.generated.cpp"
 	} kind;
 
 	std::string value;

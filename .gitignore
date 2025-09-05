@@ -1,2 +1,5 @@
 pp
+pp.dSYM/
+lex/lex
+lex/lex.dSYM/
 .idea
