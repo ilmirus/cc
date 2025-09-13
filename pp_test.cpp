@@ -1,6 +1,7 @@
 #include "pp_test.h"
 
 #include <iostream>
+#include <sstream>
 #include <assert.h>
 
 #include "file_utils.h"
@@ -75,9 +76,18 @@ void pp_test() {
 
         for (size_t i = 0; i < std::min(got.size(), expected.size()); i++) {
             if (expected[i] != stringify(got[i])) {
-                throw std::logic_error(
-                    test + ": mismatch on line " + std::to_string(i + 1) +
-                    " expected:\n" + expected[i] + "\ngot\n" + stringify(got[i]));
+                std::stringstream message;
+                message << test << ": mismatch on line " << std::to_string(i + 1);
+                message << " expected:\n" + expected[i] + "\ngot\n" + stringify(got[i]) << "\n";
+                message << "EXPECTED:\n";
+                for (auto &line: expected) {
+                    message << line << "\n";
+                }
+                message << "GOT:\n";
+                for (auto &token: got) {
+                    message << stringify(token) << "\n";
+                }
+                throw std::logic_error(message.str());
             }
         }
 

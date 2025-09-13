@@ -4,7 +4,7 @@ StringLiteral = L?".*?("|$) { if (!it.ends_with("\"")) throw std::runtime_error(
 Identifier = [_a-zA-Z][_a-zA-Z0-9]*
 
 Whitespace = singleLineComment | multiLineComment | whitespace
-singleLineComment = //.*?(?=\n|$)
+singleLineComment = //[^\n]*
 multiLineComment = /\*[\s\S]*?(\*/|$) { if (!it.ends_with("*/")) throw std::runtime_error("Unclosed multiline comment"); }
 whitespace = [ \t\r\f\v]+
 
