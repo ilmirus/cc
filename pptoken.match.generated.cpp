@@ -10,12 +10,18 @@ if(match[1].matched) { // NewLine
   token.kind = PPToken::kStringLiteral;
 } else if(match[4].matched) { // Identifier
   token.kind = PPToken::kIdentifier;
-} else if(match[5].matched) { // Whitespace
+} else if(match[5].matched) { // singleLineComment
   token.kind = PPToken::kWhitespace;
-} else if(match[6].matched) { // PPNumber
+} else if(match[6].matched) { // multiLineComment
+  const auto &it = match.str(0);
+  { if (!it.ends_with("*/")) throw std::runtime_error("Unclosed multiline comment"); }
+  token.kind = PPToken::kWhitespace;
+} else if(match[7].matched) { // whitespace
+  token.kind = PPToken::kWhitespace;
+} else if(match[8].matched) { // PPNumber
   token.kind = PPToken::kPPNumber;
-} else if(match[7].matched) { // Operator
+} else if(match[9].matched) { // Operator
   token.kind = PPToken::kOperator;
-} else if(match[8].matched) { // NonWhiteSpace
+} else if(match[10].matched) { // NonWhiteSpace
   token.kind = PPToken::kNonWhiteSpace;
 }

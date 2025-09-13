@@ -30,6 +30,8 @@ static std::string stringify(const PPToken &pp_token) {
 //        return "punctuator "s + pp_token.value;
     case PPToken::kNonWhiteSpace:
         return "non-whitespace "s + pp_token.value;
+    case PPToken::kInvalid:
+        return "non-whitespace "s + pp_token.value;
     default:
         assert(0 && "unreachable");
     }
@@ -52,7 +54,8 @@ void pp_test() {
         "100-example",
         "100-floating",
         "100-integer-zero",
-        "100-line-splice"
+        "100-line-splice",
+        "100-partial-comment"
     };
 
     for (auto &test : tests) {
@@ -60,7 +63,15 @@ void pp_test() {
 
         auto input = slurp("tests/" + test + ".c");
         auto expected = slurp_lines("tests/" + test + ".ref");
-        auto got = pp_scan(test, input);
+        std::vector<PPToken> got;
+        try {
+            got = pp_scan(test, input);
+        } catch (const std::runtime_error& ex) {
+            if (expected[0].starts_with("ERROR")) {
+                std::cout << " OK\n";
+                continue;
+            }
+        }
 
         for (size_t i = 0; i < std::min(got.size(), expected.size()); i++) {
             if (expected[i] != stringify(got[i])) {

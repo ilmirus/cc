@@ -21,6 +21,7 @@ struct Rule {
     std::string name;
     std::string pattern;
     std::string action;
+    std::string metarule;
 };
 
 bool trace = false;
@@ -100,8 +101,8 @@ std::string parse_grouping(Input &input, const std::string &rule_name, char begi
         std::cout << "\n====\nparse_grouping: " << input.rest() << std::endl;
 
     assert(input.peek() == begin);
-    std::string result;
-    result += begin;
+    std::stringstream result;
+    result << begin;
     char c = input.next();
     do {
         switch (c) {
@@ -112,22 +113,22 @@ std::string parse_grouping(Input &input, const std::string &rule_name, char begi
                     "Unclosed grouping {}..{} in {}",
                     begin, end, rule_name));
         case '(':
-            result += parse_grouping(input, rule_name, '(', ')');
+            result << parse_grouping(input, rule_name, '(', ')');
             break;
         case '[':
-            result += parse_grouping(input, rule_name, '[', ']');
+            result << parse_grouping(input, rule_name, '[', ']');
             break;
         default:
-            result += parse_pattern_char(input, rule_name);
+            result << parse_pattern_char(input, rule_name);
         }
         c = input.peek();
     } while (c != end);
-    result += c;
+    result << c;
     input.skip();
-    return result;
+    return result.str();
 }
 
-// pattern = (grouping | [^\s\n])*
+// pattern = (grouping | [^{\n])*
 // grouping = parens | square
 // parens = '(' (grouping | [^)])* ')'
 // square = '[' (grouping | [^\]])* ']'
@@ -136,22 +137,22 @@ std::string parse_pattern(Input &input, const std::string &rule_name) {
         std::cout << "\n====\nparse_pattern: " << input.rest() << std::endl;
 
     char c = input.peek();
-    std::string result;
-    while (c != ' ' && c != '\n' && c != 0) {
+    std::stringstream result;
+    while (c != '{' && c != '\n' && c != 0) {
         switch (c) {
         case '(':
-            result += parse_grouping(input, rule_name, '(', ')');
+            result << parse_grouping(input, rule_name, '(', ')');
             break;
         case '[':
-            result += parse_grouping(input, rule_name, '[', ']');
+            result << parse_grouping(input, rule_name, '[', ']');
             break;
         default:
-            result += parse_pattern_char(input, rule_name);
+            result << parse_pattern_char(input, rule_name);
         }
         c = input.peek();
     }
     skip_ws(input);
-    return result;
+    return string_trim(result.str());
 }
 
 std::string parse_action(Input &input, const std::string &name) {
@@ -159,24 +160,25 @@ std::string parse_action(Input &input, const std::string &name) {
         std::cout << "\n====\nparse_action: " << input.rest() << std::endl;
 
     assert(input.peek() == '{');
-    std::string result = "{";
+    std::stringstream result;
+    result << '{';
     char c = input.next();
     while (c != '}') {
         switch (c) {
         case '{':
-            result += parse_action(input, name);
+            result << parse_action(input, name);
             break;
         case 0:
             throw std::runtime_error("Unclosed action in " + name);
         default:
-            result += c;
+            result << c;
             input.skip();
         }
         c = input.peek();
     }
-    result += c;
+    result << c;
     input.skip();
-    return result;
+    return result.str();
 }
 
 // rule = identifier \s* '=' \s* pattern (\s '{' action '}')? new-line
@@ -232,7 +234,7 @@ void pretty_print(const std::vector<Rule> &rules) {
 }
 
 void analyze_and_inline(std::vector<Rule> &rules) {
-    std::map<std::string, Rule> nameToRule;
+    std::map<std::string, Rule *> nameToRule;
     // Analyze for duplicates and recursion
     for (auto &rule : rules) {
         if (nameToRule.contains(rule.name)) {
@@ -241,45 +243,36 @@ void analyze_and_inline(std::vector<Rule> &rules) {
         if (rule.pattern.find(rule.name) != std::string::npos) {
             throw std::runtime_error("Recursion detected in rule " + rule.name);
         }
-        nameToRule[rule.name] = rule;
+        if (rule.pattern.empty()) {
+            throw std::runtime_error("Empty pattern in rule " + rule.name);
+        }
+        nameToRule[rule.name] = &rule;
     }
 
-    // inline
+    // inline - move action from metarule to subrules and remove its pattern and action.
     for (auto &rule : rules) {
-        for (auto &inlinee : nameToRule) {
-            auto pos = rule.pattern.find(inlinee.first);
-            while (pos != std::string::npos) {
-                if (!inlinee.second.action.empty()) {
-                    throw std::runtime_error(
-                        std::format(
-                            "Cannot inline {} into {}: {} has action {}",
-                            inlinee.first, rule.name, inlinee.first, inlinee.second.action));
-                }
-                // remove whitespaces surrounding subrule
-                while (pos > 0 && rule.pattern[pos - 1] == ' ') {
-                    rule.pattern.erase(--pos, 1);
-                }
-                auto len = inlinee.first.length();
-                while (
-                    pos + len < rule.pattern.length() && rule.pattern[pos + len] == ' ') {
-                    rule.pattern.erase(pos + len, 1);
-                }
-                rule.pattern.replace(pos, len, inlinee.second.pattern);
-                pos = rule.pattern.find(inlinee.first, pos + inlinee.second.pattern.length());
+        bool is_metarule = false;
+        for (auto &subrule : nameToRule) {
+            if (rule.pattern.find(subrule.first) != std::string::npos) {
+                is_metarule = true;
+                break;
             }
         }
-    }
-}
 
-std::vector<Rule> remove_non_public(const std::vector<Rule> &rules) {
-    std::vector<Rule> result;
-    for (auto &rule: rules) {
-        if (!std::isupper(rule.name[0])) {
-            continue;
+        if (is_metarule) {
+            auto subrules = string_split_and_trim(rule.pattern, "|");
+            for (auto &sub: subrules) {
+                if (!nameToRule.contains(sub)) {
+                    throw std::runtime_error("Cannot find subrule '" + sub + "' in rule " + rule.name);
+                }
+                auto *subrule = nameToRule[sub];
+                subrule->action += "\n" + rule.action;
+                subrule->metarule = rule.name;
+            }
+            rule.pattern = "";
+            rule.action = "";
         }
-        result.push_back(rule);
     }
-    return result;
 }
 
 std::string prepare_regex(const std::vector<Rule> &rules) {
@@ -287,7 +280,10 @@ std::string prepare_regex(const std::vector<Rule> &rules) {
     // Replace ( with (?: and make final string with regex
     for (size_t i = 0; i < rules.size(); i++) {
         auto &rule = rules[i];
-        assert (std::isupper(rule.name[0]));
+        // Skip metarules
+        if (rule.pattern.empty()) {
+            continue;
+        }
         result << "R\"((";
         auto input = Input{rule.pattern, 0};
         while (input.peek() != 0) {
@@ -320,7 +316,9 @@ std::string prepare_regex(const std::vector<Rule> &rules) {
 std::string prepare_enum(const std::vector<Rule> &rules) {
     std::stringstream result;
     for (auto &rule: rules) {
-        assert (std::isupper(rule.name[0]));
+        if (!std::isupper(rule.name[0])) {
+            continue;
+        }
         result << "k" << rule.name << ",\n";
     }
     result << "kInvalid\n";
@@ -330,20 +328,26 @@ std::string prepare_enum(const std::vector<Rule> &rules) {
 std::string prepare_match(const std::vector<Rule> &rules) {
     std::stringstream result;
     bool first = true;
-    for (size_t i = 0; i < rules.size(); i++) {
-        auto &rule = rules[i];
-        assert (std::isupper(rule.name[0]));
+    size_t index = 1;
+    for (auto &rule: rules) {
+        // Skip metarules
+        if (rule.pattern.empty()) {
+            continue;
+        }
         if (!first) {
             result << "} else ";
         } else {
             first = false;
         }
-        result << "if(match[" << i+1 << "].matched) { // " << rule.name << "\n";
-        if (!rule.action.empty()) {
+        result << "if(match[" << index++ << "].matched) { // " << rule.name << "\n";
+        if (!string_trim(rule.action).empty()) {
             result << "  const auto &it = match.str(0);\n";
-            result << "  " << rule.action << "\n";
+            auto lines = string_split_and_trim(rule.action, "\n");
+            for (auto &line: lines) {
+                result << "  " << line << "\n";
+            }
         }
-        result << "  token.kind = PPToken::k" << rule.name << ";\n";
+        result << "  token.kind = PPToken::k" << (rule.metarule.empty() ? rule.name : rule.metarule) << ";\n";
     }
     result << "}\n";
     return result.str();
@@ -356,7 +360,6 @@ int main(int argc, char **argv) {
     auto input = Input{raw, 0};
     auto rules = parse(input);
     analyze_and_inline(rules);
-    rules = remove_non_public(rules);
     file_dump(string_replace(argv[1], ".lex", ".regex.generated.cpp"), prepare_regex(rules));
     file_dump(string_replace(argv[1], ".lex", ".enum.generated.cpp"), prepare_enum(rules));
     file_dump(string_replace(argv[1], ".lex", ".match.generated.cpp"), prepare_match(rules));
