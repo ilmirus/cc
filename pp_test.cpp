@@ -13,10 +13,72 @@ static std::string stringify(const PPToken &pp_token) {
     switch (pp_token.kind) {
     case PPToken::kWhitespace:
         return "whitespace";
+    case PPToken::kKwAuto:
+        return "keyword auto";
+    case PPToken::kKwBreak:
+        return "keyword break";
+    case PPToken::kKwCase:
+        return "keyword case";
+    case PPToken::kKwChar:
+        return "keyword char";
+    case PPToken::kKwConst:
+        return "keyword const";
+    case PPToken::kKwContinue:
+        return "keyword continue";
+    case PPToken::kKwDefault:
+        return "keyword default";
+    case PPToken::kKwDo:
+        return "keyword do";
+    case PPToken::kKwDouble:
+        return "keyword double";
+    case PPToken::kKwElse:
+        return "keyword else";
+    case PPToken::kKwEnum:
+        return "keyword enum";
+    case PPToken::kKwExtern:
+        return "keyword extern";
+    case PPToken::kKwFloat:
+        return "keyword float";
+    case PPToken::kKwFor:
+        return "keyword for";
+    case PPToken::kKwGoto:
+        return "keyword goto";
+    case PPToken::kKwIf:
+        return "keyword if";
+    case PPToken::kKwInt:
+        return "keyword int";
+    case PPToken::kKwLong:
+        return "keyword long";
+    case PPToken::kKwRegister:
+        return "keyword register";
+    case PPToken::kKwReturn:
+        return "keyword return";
+    case PPToken::kKwShort:
+        return "keyword short";
+    case PPToken::kKwSigned:
+        return "keyword signed";
+    case PPToken::kKwSizeof:
+        return "keyword sizeof";
+    case PPToken::kKwStatic:
+        return "keyword static";
+    case PPToken::kKwStruct:
+        return "keyword struct";
+    case PPToken::kKwSwitch:
+        return "keyword switch";
+    case PPToken::kKwTypedef:
+        return "keyword typedef";
+    case PPToken::kKwUnion:
+        return "keyword union";
+    case PPToken::kKwUnsigned:
+        return "keyword unsigned";
+    case PPToken::kKwVoid:
+        return "keyword void";
+    case PPToken::kKwVolatile:
+        return "keyword volatile";
+    case PPToken::kKwWhile:
+        return "keyword while";
     case PPToken::kNewLine:
         return "new-line";
-//    case PPToken::kHeaderName:
-//        return "header-name "s + pp_token.value;
     case PPToken::kIdentifier:
         return "identifier "s + pp_token.value;
     case PPToken::kPPNumber:
@@ -27,8 +89,6 @@ static std::string stringify(const PPToken &pp_token) {
         return "string-literal "s + pp_token.value;
     case PPToken::kOperator:
         return "operator "s + pp_token.value;
-//    case PPToken::kPunctuator:
-//        return "punctuator "s + pp_token.value;
     case PPToken::kNonWhiteSpace:
         return "non-whitespace "s + pp_token.value;
     case PPToken::kInvalid:
@@ -57,7 +117,8 @@ void pp_test() {
         "100-integer-zero",
         "100-line-splice",
         "100-partial-comment",
-        "100-partial-string-literal"
+        "100-partial-string-literal",
+        "100-keywords"
     };
 
     for (auto &test : tests) {

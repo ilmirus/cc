@@ -1,0 +1,66 @@
+keyword auto
+whitespace
+keyword break
+whitespace
+keyword case
+whitespace
+keyword char
+whitespace
+keyword const
+whitespace
+keyword continue
+whitespace
+keyword default
+whitespace
+keyword do
+new-line
+keyword double
+whitespace
+keyword else
+whitespace
+keyword enum
+whitespace
+keyword extern
+whitespace
+keyword float
+whitespace
+keyword for
+whitespace
+keyword goto
+whitespace
+keyword if
+new-line
+keyword int
+whitespace
+keyword long
+whitespace
+keyword register
+whitespace
+keyword return
+whitespace
+keyword short
+whitespace
+keyword signed
+whitespace
+keyword sizeof
+whitespace
+keyword static
+new-line
+keyword struct
+whitespace
+keyword switch
+whitespace
+keyword typedef
+whitespace
+keyword union
+whitespace
+keyword unsigned
+whitespace
+keyword void
+whitespace
+keyword volatile
+whitespace
+keyword while
+new-line
+identifier auto_but_identifier
+new-line
