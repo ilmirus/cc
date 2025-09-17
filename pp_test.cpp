@@ -56,7 +56,8 @@ void pp_test() {
         "100-floating",
         "100-integer-zero",
         "100-line-splice",
-        "100-partial-comment"
+        "100-partial-comment",
+        "100-partial-string-literal"
     };
 
     for (auto &test : tests) {
