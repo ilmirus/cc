@@ -22,6 +22,7 @@ struct Rule {
     std::string pattern;
     std::string action;
     std::string metarule;
+    bool is_inline;
 };
 
 bool trace = false;
@@ -181,13 +182,18 @@ std::string parse_action(Input &input, const std::string &name) {
     return result.str();
 }
 
-// rule = identifier \s* '=' \s* pattern (\s '{' action '}')? new-line
+// rule = inline? identifier \s* '=' \s* pattern (\s '{' action '}')? new-line
 Rule parse_rule(Input &input) {
     if (trace)
         std::cout << "\n====\nparse_rule: " << input.rest() << std::endl;
 
     assert(is_identifier_start(input.peek()));
     auto name = parse_identifier(input);
+    bool is_inline = name == "inline";
+    skip_ws(input);
+    if (is_inline) {
+        name = parse_identifier(input);
+    }
     skip_ws(input);
     if (input.peek() != '=') {
         throw std::runtime_error("Expected '=' after name in rule: " + name);
@@ -209,7 +215,7 @@ Rule parse_rule(Input &input) {
         input.skip();
         skip_ws(input);
     }
-    return Rule{name, pattern, action};
+    return Rule{name, pattern, action, "", is_inline};
 }
 
 std::vector<Rule> parse(Input &input) {
@@ -249,7 +255,39 @@ void analyze_and_inline(std::vector<Rule> &rules) {
         nameToRule[rule.name] = &rule;
     }
 
-    // inline - move action from metarule to subrules and remove its pattern and action.
+    // inline
+    for (auto &rule : rules) {
+        bool inlined;
+        do {
+            inlined = false;
+            for (auto [inlinee_name, inlinee] : nameToRule) {
+                if (!inlinee->is_inline) {
+                    continue;
+                }
+                auto pos = rule.pattern.find(inlinee_name);
+                if (pos != std::string::npos) {
+                    if (!inlinee->action.empty()) {
+                        throw std::runtime_error(
+                            std::format(
+                                "Cannot inline {} into {}: {} has action {}",
+                                inlinee_name, rule.name, inlinee_name, inlinee->action));
+                    }
+                    // remove whitespaces surrounding subrule
+                    while (pos > 0 && rule.pattern[pos - 1] == ' ') {
+                        rule.pattern.erase(--pos, 1);
+                    }
+                    auto len = inlinee_name.length();
+                    while (pos + len < rule.pattern.length() && rule.pattern[pos + len] == ' ') {
+                        rule.pattern.erase(pos + len, 1);
+                    }
+                    rule.pattern.replace(pos, len, inlinee->pattern);
+                    inlined = true;
+                }
+            }
+        } while(inlined);
+    }
+
+    // Move action from metarule to subrules and remove its pattern and action.
     for (auto &rule : rules) {
         bool is_metarule = false;
         for (auto &subrule : nameToRule) {
@@ -266,6 +304,9 @@ void analyze_and_inline(std::vector<Rule> &rules) {
                     throw std::runtime_error("Cannot find subrule '" + sub + "' in rule " + rule.name);
                 }
                 auto *subrule = nameToRule[sub];
+                if (subrule->is_inline) {
+                    throw std::runtime_error("Inline rule '" + sub + "' cannot be subrule of " + rule.name);
+                }
                 subrule->action += "\n" + rule.action;
                 subrule->metarule = rule.name;
             }
@@ -282,6 +323,10 @@ std::string prepare_regex(const std::vector<Rule> &rules) {
         auto &rule = rules[i];
         // Skip metarules
         if (rule.pattern.empty()) {
+            continue;
+        }
+        // Skip inline rules
+        if (rule.is_inline) {
             continue;
         }
         result << "R\"((";
@@ -319,6 +364,10 @@ std::string prepare_enum(const std::vector<Rule> &rules) {
         if (!std::isupper(rule.name[0])) {
             continue;
         }
+        // Skip inline rules
+        if (rule.is_inline) {
+            continue;
+        }
         result << "k" << rule.name << ",\n";
     }
     result << "kInvalid\n";
@@ -332,6 +381,10 @@ std::string prepare_match(const std::vector<Rule> &rules) {
     for (auto &rule: rules) {
         // Skip metarules
         if (rule.pattern.empty()) {
+            continue;
+        }
+        // Skip inline rules
+        if (rule.is_inline) {
             continue;
         }
         if (!first) {
