@@ -72,106 +72,110 @@ if(match[1].matched) { // NewLine
   token.kind = PPToken::kVolatile;
 } else if(match[36].matched) { // While
   token.kind = PPToken::kWhile;
-} else if(match[37].matched) { // OpenSquare
+} else if(match[37].matched) { // DotDotDot
+  token.kind = PPToken::kDotDotDot;
+} else if(match[38].matched) { // Semicolon
+  token.kind = PPToken::kSemicolon;
+} else if(match[39].matched) { // OpenSquare
   token.kind = PPToken::kOpenSquare;
-} else if(match[38].matched) { // CloseSquare
+} else if(match[40].matched) { // CloseSquare
   token.kind = PPToken::kCloseSquare;
-} else if(match[39].matched) { // OpenParen
+} else if(match[41].matched) { // OpenParen
   token.kind = PPToken::kOpenParen;
-} else if(match[40].matched) { // CloseParen
+} else if(match[42].matched) { // CloseParen
   token.kind = PPToken::kCloseParen;
-} else if(match[41].matched) { // Dot
+} else if(match[43].matched) { // Dot
   token.kind = PPToken::kDot;
-} else if(match[42].matched) { // Arrow
+} else if(match[44].matched) { // Arrow
   token.kind = PPToken::kArrow;
-} else if(match[43].matched) { // BitNot
+} else if(match[45].matched) { // BitNot
   token.kind = PPToken::kBitNot;
-} else if(match[44].matched) { // Inc
+} else if(match[46].matched) { // Inc
   token.kind = PPToken::kInc;
-} else if(match[45].matched) { // Dec
+} else if(match[47].matched) { // Dec
   token.kind = PPToken::kDec;
-} else if(match[46].matched) { // AndAnd
+} else if(match[48].matched) { // AndAnd
   token.kind = PPToken::kAndAnd;
-} else if(match[47].matched) { // AndAssign
+} else if(match[49].matched) { // AndAssign
   token.kind = PPToken::kAndAssign;
-} else if(match[48].matched) { // And
+} else if(match[50].matched) { // And
   token.kind = PPToken::kAnd;
-} else if(match[49].matched) { // StarAssign
+} else if(match[51].matched) { // StarAssign
   token.kind = PPToken::kStarAssign;
-} else if(match[50].matched) { // Star
+} else if(match[52].matched) { // Star
   token.kind = PPToken::kStar;
-} else if(match[51].matched) { // Minus
+} else if(match[53].matched) { // Minus
   token.kind = PPToken::kMinus;
-} else if(match[52].matched) { // NotAssign
+} else if(match[54].matched) { // NotAssign
   token.kind = PPToken::kNotAssign;
-} else if(match[53].matched) { // Not
+} else if(match[55].matched) { // Not
   token.kind = PPToken::kNot;
-} else if(match[54].matched) { // DivAssign
+} else if(match[56].matched) { // DivAssign
   token.kind = PPToken::kDivAssign;
-} else if(match[55].matched) { // Div
+} else if(match[57].matched) { // Div
   token.kind = PPToken::kDiv;
-} else if(match[56].matched) { // ModAssign
+} else if(match[58].matched) { // ModAssign
   token.kind = PPToken::kModAssign;
-} else if(match[57].matched) { // Mod
+} else if(match[59].matched) { // Mod
   token.kind = PPToken::kMod;
-} else if(match[58].matched) { // PlusAssign
+} else if(match[60].matched) { // PlusAssign
   token.kind = PPToken::kPlusAssign;
-} else if(match[59].matched) { // Plus
+} else if(match[61].matched) { // Plus
   token.kind = PPToken::kPlus;
-} else if(match[60].matched) { // ShiftLeftAssign
+} else if(match[62].matched) { // ShiftLeftAssign
   token.kind = PPToken::kShiftLeftAssign;
-} else if(match[61].matched) { // ShiftLeft
+} else if(match[63].matched) { // ShiftLeft
   token.kind = PPToken::kShiftLeft;
-} else if(match[62].matched) { // ShiftRightAssign
+} else if(match[64].matched) { // ShiftRightAssign
   token.kind = PPToken::kShiftRightAssign;
-} else if(match[63].matched) { // ShiftRight
+} else if(match[65].matched) { // ShiftRight
   token.kind = PPToken::kShiftRight;
-} else if(match[64].matched) { // LessEq
+} else if(match[66].matched) { // LessEq
   token.kind = PPToken::kLessEq;
-} else if(match[65].matched) { // Less
+} else if(match[67].matched) { // Less
   token.kind = PPToken::kLess;
-} else if(match[66].matched) { // GrEq
+} else if(match[68].matched) { // GrEq
   token.kind = PPToken::kGrEq;
-} else if(match[67].matched) { // Gr
+} else if(match[69].matched) { // Gr
   token.kind = PPToken::kGr;
-} else if(match[68].matched) { // EqEq
+} else if(match[70].matched) { // EqEq
   token.kind = PPToken::kEqEq;
-} else if(match[69].matched) { // XorAssign
+} else if(match[71].matched) { // XorAssign
   token.kind = PPToken::kXorAssign;
-} else if(match[70].matched) { // Xor
+} else if(match[72].matched) { // Xor
   token.kind = PPToken::kXor;
-} else if(match[71].matched) { // OrOr
+} else if(match[73].matched) { // OrOr
   token.kind = PPToken::kOrOr;
-} else if(match[72].matched) { // OrAssign
+} else if(match[74].matched) { // OrAssign
   token.kind = PPToken::kOrAssign;
-} else if(match[73].matched) { // Or
+} else if(match[75].matched) { // Or
   token.kind = PPToken::kOr;
-} else if(match[74].matched) { // Query
+} else if(match[76].matched) { // Query
   token.kind = PPToken::kQuery;
-} else if(match[75].matched) { // Colon
+} else if(match[77].matched) { // Colon
   token.kind = PPToken::kColon;
-} else if(match[76].matched) { // Assign
+} else if(match[78].matched) { // Assign
   token.kind = PPToken::kAssign;
-} else if(match[77].matched) { // Comma
+} else if(match[79].matched) { // Comma
   token.kind = PPToken::kComma;
-} else if(match[78].matched) { // HashHash
+} else if(match[80].matched) { // HashHash
   token.kind = PPToken::kHashHash;
-} else if(match[79].matched) { // Hash
+} else if(match[81].matched) { // Hash
   token.kind = PPToken::kHash;
-} else if(match[80].matched) { // CharacterConstant
+} else if(match[82].matched) { // CharacterConstant
   const auto &it = match.str(0);
   { if (!it.ends_with("'")) throw std::runtime_error("Unclosed character constant"); }
   token.kind = PPToken::kCharacterConstant;
-} else if(match[81].matched) { // StringLiteral
+} else if(match[83].matched) { // StringLiteral
   const auto &it = match.str(0);
   { if (!it.ends_with("\"")) throw std::runtime_error("Unclosed string literal"); }
   token.kind = PPToken::kStringLiteral;
-} else if(match[82].matched) { // Identifier
+} else if(match[84].matched) { // Identifier
   token.kind = PPToken::kIdentifier;
-} else if(match[83].matched) { // PPNumber
+} else if(match[85].matched) { // PPNumber
   token.kind = PPToken::kPPNumber;
-} else if(match[84].matched) { // Operator
+} else if(match[86].matched) { // Operator
   token.kind = PPToken::kOperator;
-} else if(match[85].matched) { // NonWhiteSpace
+} else if(match[87].matched) { // NonWhiteSpace
   token.kind = PPToken::kNonWhiteSpace;
 }

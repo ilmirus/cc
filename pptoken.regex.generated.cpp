@@ -34,6 +34,8 @@ R"((unsigned(?![_a-zA-Z0-9]))|)" // Unsigned
 R"((void(?![_a-zA-Z0-9]))|)" // Void
 R"((volatile(?![_a-zA-Z0-9]))|)" // Volatile
 R"((while(?![_a-zA-Z0-9]))|)" // While
+R"((\.\.\.)|)" // DotDotDot
+R"((;)|)" // Semicolon
 R"((\[)|)" // OpenSquare
 R"((\])|)" // CloseSquare
 R"((\()|)" // OpenParen

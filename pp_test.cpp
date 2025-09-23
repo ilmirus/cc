@@ -77,6 +77,10 @@ static std::string stringify(const PPToken &pp_token) {
         return "keyword volatile";
     case PPToken::kWhile:
         return "keyword while";
+    case PPToken::kDotDotDot:
+        return "punctuator ...";
+    case PPToken::kSemicolon:
+        return "punctuator ;";
     case PPToken::kOpenSquare:
         return "operator [";
     case PPToken::kCloseSquare:

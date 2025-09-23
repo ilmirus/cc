@@ -86,3 +86,7 @@ operator #
 whitespace
 operator ##
 new-line
+punctuator ...
+whitespace
+punctuator ;
+new-line

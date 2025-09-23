@@ -38,6 +38,8 @@ Void = void notId
 Volatile = volatile notId
 While = while notId
 
+DotDotDot = \.\.\.
+Semicolon = ;
 OpenSquare = \[
 CloseSquare = \]
 OpenParen = \(
