@@ -77,6 +77,92 @@ static std::string stringify(const PPToken &pp_token) {
         return "keyword volatile";
     case PPToken::kWhile:
         return "keyword while";
+    case PPToken::kOpenSquare:
+        return "operator [";
+    case PPToken::kCloseSquare:
+        return "operator ]";
+    case PPToken::kOpenParen:
+        return "operator (";
+    case PPToken::kCloseParen:
+        return "operator )";
+    case PPToken::kDot:
+        return "operator :";
+    case PPToken::kArrow:
+        return "operator ->";
+    case PPToken::kInc:
+        return "operator ++";
+    case PPToken::kDec:
+        return "operator --";
+    case PPToken::kAndAnd:
+        return "operator &&";
+    case PPToken::kAndAssign:
+        return "operator &=";
+    case PPToken::kAnd:
+        return "operator &";
+    case PPToken::kStarAssign:
+        return "operator *=";
+    case PPToken::kStar:
+        return "operator *";
+    case PPToken::kMinus:
+        return "operator -";
+    case PPToken::kBitNot:
+        return "operator ~";
+    case PPToken::kNotAssign:
+        return "operator !=";
+    case PPToken::kNot:
+        return "operator !";
+    case PPToken::kDivAssign:
+        return "operator /=";
+    case PPToken::kDiv:
+        return "operator /";
+    case PPToken::kModAssign:
+        return "operator %=";
+    case PPToken::kMod:
+        return "operator %";
+    case PPToken::kPlusAssign:
+        return "operator +=";
+    case PPToken::kPlus:
+        return "operator +";
+    case PPToken::kShiftLeftAssign:
+        return "operator <<=";
+    case PPToken::kShiftLeft:
+        return "operator <<";
+    case PPToken::kShiftRightAssign:
+        return "operator >>=";
+    case PPToken::kShiftRight:
+        return "operator >>";
+    case PPToken::kLessEq:
+        return "operator <=";
+    case PPToken::kLess:
+        return "operator <";
+    case PPToken::kGrEq:
+        return "operator >=";
+    case PPToken::kGr:
+        return "operator >";
+    case PPToken::kEqEq:
+        return "operator ==";
+    case PPToken::kXorAssign:
+        return "operator ^=";
+    case PPToken::kXor:
+        return "operator ^";
+    case PPToken::kOrOr:
+        return "operator ||";
+    case PPToken::kOrAssign:
+        return "operator |=";
+    case PPToken::kOr:
+        return "operator |";
+    case PPToken::kQuery:
+        return "operator ?";
+    case PPToken::kColon:
+        return "operator :";
+    case PPToken::kAssign:
+        return "operator =";
+    case PPToken::kComma:
+        return "operator ,";
+    case PPToken::kHashHash:
+        return "operator ##";
+    case PPToken::kHash:
+        return "operator #";
     case PPToken::kNewLine:
         return "new-line";
     case PPToken::kIdentifier:
@@ -92,7 +178,7 @@ static std::string stringify(const PPToken &pp_token) {
     case PPToken::kNonWhiteSpace:
         return "non-whitespace "s + pp_token.value;
     case PPToken::kInvalid:
-        return "non-whitespace "s + pp_token.value;
+        assert(0 && "invalid");
     default:
         assert(0 && "unreachable");
     }
@@ -118,7 +204,8 @@ void pp_test() {
         "100-line-splice",
         "100-partial-comment",
         "100-partial-string-literal",
-        "100-keywords"
+        "100-keywords",
+        "100-operators"
     };
 
     for (auto &test : tests) {

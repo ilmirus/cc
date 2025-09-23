@@ -1,5 +1,10 @@
 NewLine = \n
 
+Whitespace = singleLineComment | multiLineComment | whitespace
+singleLineComment = //[^\n]*
+multiLineComment = /\*[\s\S]*?(\*/|$) { if (!it.ends_with("*/")) throw std::runtime_error("Unclosed multiline comment"); }
+whitespace = [ \t\r\f\v]+
+
 Auto = auto notId
 Break = break notId
 Case = case notId
@@ -33,6 +38,50 @@ Void = void notId
 Volatile = volatile notId
 While = while notId
 
+OpenSquare = \[
+CloseSquare = \]
+OpenParen = \(
+CloseParen = \)
+Dot = \.
+Arrow = ->
+BitNot = ~
+Inc = \+\+
+Dec = --
+AndAnd = &&
+AndAssign = &=
+And = &
+StarAssign = \*=
+Star = \*
+Minus = -
+NotAssign = !=
+Not = !
+DivAssign = /=
+Div = /
+ModAssign = %=
+Mod = %
+PlusAssign = \+=
+Plus = \+
+ShiftLeftAssign = <<=
+ShiftLeft = <<
+ShiftRightAssign = >>=
+ShiftRight = >>
+LessEq = <=
+Less = <
+GrEq = >=
+Gr = >
+EqEq = ==
+XorAssign = \^=
+Xor = \^
+OrOr =\|\|
+OrAssign = \|=
+Or = \|
+Query = \?
+Colon = :
+Assign = =
+Comma = ,
+HashHash = ##
+Hash = #
+
 inline identifierRest = [_a-zA-Z0-9]
 inline notId = (?!identifierRest)
 
@@ -40,11 +89,6 @@ CharacterConstant = L?'.*?('|$) { if (!it.ends_with("'")) throw std::runtime_err
 StringLiteral = L?".*?("|$) { if (!it.ends_with("\"")) throw std::runtime_error("Unclosed string literal"); }
 
 Identifier = [_a-zA-Z] identifierRest*
-
-Whitespace = singleLineComment | multiLineComment | whitespace
-singleLineComment = //[^\n]*
-multiLineComment = /\*[\s\S]*?(\*/|$) { if (!it.ends_with("*/")) throw std::runtime_error("Unclosed multiline comment"); }
-whitespace = [ \t\r\f\v]+
 
 PPNumber = \.?[0-9]([eE][+-]|\.|[0-9a-zA-Z_])*
 Operator = -|\+|\*=

@@ -1,0 +1,88 @@
+operator [
+whitespace
+operator ]
+whitespace
+operator (
+whitespace
+operator )
+whitespace
+operator :
+whitespace
+operator ->
+new-line
+operator ++
+whitespace
+operator --
+whitespace
+operator &
+whitespace
+operator *
+whitespace
+operator +
+whitespace
+operator -
+whitespace
+operator ~
+whitespace
+operator !
+whitespace
+keyword sizeof
+new-line
+operator /
+whitespace
+operator %
+whitespace
+operator <<
+whitespace
+operator >>
+whitespace
+operator <
+whitespace
+operator >
+whitespace
+operator <=
+whitespace
+operator >=
+whitespace
+operator ==
+whitespace
+operator !=
+whitespace
+operator ^
+whitespace
+operator |
+whitespace
+operator &&
+whitespace
+operator ||
+new-line
+operator ?
+whitespace
+operator :
+new-line
+operator =
+whitespace
+operator *=
+whitespace
+operator /=
+whitespace
+operator %=
+whitespace
+operator +=
+whitespace
+operator <<=
+whitespace
+operator >>=
+whitespace
+operator &=
+whitespace
+operator ^=
+whitespace
+operator |=
+new-line
+operator ,
+whitespace
+operator #
+whitespace
+operator ##
+new-line
