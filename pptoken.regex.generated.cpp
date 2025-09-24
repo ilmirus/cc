@@ -2,6 +2,7 @@ R"((\n)|)" // NewLine
 R"((//[^\n]*)|)" // singleLineComment
 R"((/\*[\s\S]*?(?:\*/|$))|)" // multiLineComment
 R"(([ \t\r\f\v]+)|)" // whitespace
+R"((\.?[0-9](?:[eE][+-]|\.|[0-9a-zA-Z_])*)|)" // PPNumber
 R"((auto(?![_a-zA-Z0-9]))|)" // Auto
 R"((break(?![_a-zA-Z0-9]))|)" // Break
 R"((case(?![_a-zA-Z0-9]))|)" // Case
@@ -82,5 +83,4 @@ R"((#)|)" // Hash
 R"((L?'.*?(?:'|$))|)" // CharacterConstant
 R"((L?".*?(?:"|$))|)" // StringLiteral
 R"(([_a-zA-Z][_a-zA-Z0-9]*)|)" // Identifier
-R"((\.?[0-9](?:[eE][+-]|\.|[0-9a-zA-Z_])*)|)" // PPNumber
 R"((.))" // NonWhiteSpace

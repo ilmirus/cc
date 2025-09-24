@@ -1,0 +1,72 @@
+pp-number 0.0
+whitespace
+pp-number 0.
+whitespace
+pp-number .0
+whitespace
+pp-number 0e0
+whitespace
+pp-number 0e+0
+whitespace
+pp-number 0e-0
+whitespace
+pp-number 0.0e0
+whitespace
+pp-number 0.0e+0
+whitespace
+pp-number 0.0e-0
+whitespace
+pp-number .0e0
+whitespace
+pp-number .0e+0
+whitespace
+pp-number .0e-0
+new-line
+pp-number 1.0
+whitespace
+pp-number 1.
+whitespace
+pp-number .1
+whitespace
+pp-number 1E0
+whitespace
+pp-number 1E+0
+whitespace
+pp-number 1E-0
+whitespace
+pp-number 1.0E0
+whitespace
+pp-number 1.0E+0
+whitespace
+pp-number 1.0E-0
+whitespace
+pp-number .1e0
+whitespace
+pp-number .1e+0
+whitespace
+pp-number .1e-0
+new-line
+pp-number 123.456
+whitespace
+pp-number 123.
+whitespace
+pp-number .456
+whitespace
+pp-number 123e78
+whitespace
+pp-number 123E+78
+whitespace
+pp-number 123e-78
+whitespace
+pp-number 123.456E78
+whitespace
+pp-number 123.456E+78
+whitespace
+pp-number 123.456E-78
+whitespace
+pp-number .456e78
+whitespace
+pp-number .456E+78
+whitespace
+pp-number .456E-78
+new-line

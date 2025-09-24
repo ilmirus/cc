@@ -1,5 +1,6 @@
 kNewLine,
 kWhitespace,
+kPPNumber,
 kAuto,
 kBreak,
 kCase,
@@ -80,6 +81,5 @@ kHash,
 kCharacterConstant,
 kStringLiteral,
 kIdentifier,
-kPPNumber,
 kNonWhiteSpace,
 kInvalid

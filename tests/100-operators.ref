@@ -6,7 +6,7 @@ operator (
 whitespace
 operator )
 whitespace
-operator :
+operator .
 whitespace
 operator ->
 new-line

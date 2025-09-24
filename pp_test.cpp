@@ -90,7 +90,7 @@ static std::string stringify(const PPToken &pp_token) {
     case PPToken::kCloseParen:
         return "operator )";
     case PPToken::kDot:
-        return "operator :";
+        return "operator .";
     case PPToken::kArrow:
         return "operator ->";
     case PPToken::kInc:
@@ -207,7 +207,8 @@ void pp_test() {
         "100-partial-comment",
         "100-partial-string-literal",
         "100-keywords",
-        "100-operators"
+        "100-operators",
+        "200-basic-floating"
     };
 
     for (auto &test : tests) {
