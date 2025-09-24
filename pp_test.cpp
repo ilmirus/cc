@@ -208,7 +208,8 @@ void pp_test() {
         "100-partial-string-literal",
         "100-keywords",
         "100-operators",
-        "200-basic-floating"
+        "200-basic-floating",
+        "200-basic-integer-suffix"
     };
 
     for (auto &test : tests) {
