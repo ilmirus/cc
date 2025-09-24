@@ -109,7 +109,7 @@ static std::string stringify(const PPToken &pp_token) {
         return "operator *";
     case PPToken::kMinus:
         return "operator -";
-    case PPToken::kBitNot:
+    case PPToken::kInv:
         return "operator ~";
     case PPToken::kNotAssign:
         return "operator !=";
@@ -177,8 +177,6 @@ static std::string stringify(const PPToken &pp_token) {
         return "character-constant "s + pp_token.value;
     case PPToken::kStringLiteral:
         return "string-literal "s + pp_token.value;
-    case PPToken::kOperator:
-        return "operator "s + pp_token.value;
     case PPToken::kNonWhiteSpace:
         return "non-whitespace "s + pp_token.value;
     case PPToken::kInvalid:

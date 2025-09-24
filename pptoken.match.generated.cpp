@@ -88,8 +88,8 @@ if(match[1].matched) { // NewLine
   token.kind = PPToken::kDot;
 } else if(match[44].matched) { // Arrow
   token.kind = PPToken::kArrow;
-} else if(match[45].matched) { // BitNot
-  token.kind = PPToken::kBitNot;
+} else if(match[45].matched) { // Inv
+  token.kind = PPToken::kInv;
 } else if(match[46].matched) { // Inc
   token.kind = PPToken::kInc;
 } else if(match[47].matched) { // Dec
@@ -174,8 +174,6 @@ if(match[1].matched) { // NewLine
   token.kind = PPToken::kIdentifier;
 } else if(match[85].matched) { // PPNumber
   token.kind = PPToken::kPPNumber;
-} else if(match[86].matched) { // Operator
-  token.kind = PPToken::kOperator;
-} else if(match[87].matched) { // NonWhiteSpace
+} else if(match[86].matched) { // NonWhiteSpace
   token.kind = PPToken::kNonWhiteSpace;
 }

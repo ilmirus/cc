@@ -42,7 +42,7 @@ R"((\()|)" // OpenParen
 R"((\))|)" // CloseParen
 R"((\.)|)" // Dot
 R"((->)|)" // Arrow
-R"((~)|)" // BitNot
+R"((~)|)" // Inv
 R"((\+\+)|)" // Inc
 R"((--)|)" // Dec
 R"((&&)|)" // AndAnd
@@ -83,5 +83,4 @@ R"((L?'.*?(?:'|$))|)" // CharacterConstant
 R"((L?".*?(?:"|$))|)" // StringLiteral
 R"(([_a-zA-Z][_a-zA-Z0-9]*)|)" // Identifier
 R"((\.?[0-9](?:[eE][+-]|\.|[0-9a-zA-Z_])*)|)" // PPNumber
-R"((-|\+|\*=)|)" // Operator
 R"((.))" // NonWhiteSpace

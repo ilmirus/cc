@@ -46,7 +46,7 @@ OpenParen = \(
 CloseParen = \)
 Dot = \.
 Arrow = ->
-BitNot = ~
+Inv = ~
 Inc = \+\+
 Dec = --
 AndAnd = &&
@@ -93,5 +93,4 @@ StringLiteral = L?".*?("|$) { if (!it.ends_with("\"")) throw std::runtime_error(
 Identifier = [_a-zA-Z] identifierRest*
 
 PPNumber = \.?[0-9]([eE][+-]|\.|[0-9a-zA-Z_])*
-Operator = -|\+|\*=
 NonWhiteSpace = .
