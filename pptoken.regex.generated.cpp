@@ -80,7 +80,7 @@ R"((=)|)" // Assign
 R"((,)|)" // Comma
 R"((##)|)" // HashHash
 R"((#)|)" // Hash
-R"((L?'.*?(?:'|$))|)" // CharacterConstant
+R"((L?'(?:[^'\n\\]|\\(?:x[0-9a-fA-F]+|[0-7]{1,3}|['"?\\abfnrtv]))*(?:'|$))|)" // CharacterConstant
 R"((L?".*?(?:"|$))|)" // StringLiteral
 R"(([_a-zA-Z][_a-zA-Z0-9]*)|)" // Identifier
 R"((.))" // NonWhiteSpace

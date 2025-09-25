@@ -1,0 +1,70 @@
+character-constant 'a'
+whitespace
+character-constant '\''
+whitespace
+character-constant '\"'
+whitespace
+character-constant '\?'
+whitespace
+character-constant '\\'
+whitespace
+character-constant '\a'
+whitespace
+character-constant '\b'
+whitespace
+character-constant '\f'
+whitespace
+character-constant '\n'
+whitespace
+character-constant '\r'
+whitespace
+character-constant '\t'
+whitespace
+character-constant '\v'
+new-line
+character-constant '\x03C0'
+whitespace
+character-constant '\x0001D11E'
+whitespace
+character-constant '\x3C0'
+whitespace
+character-constant '\x1D11E'
+whitespace
+character-constant '\101'
+new-line
+character-constant L'a'
+whitespace
+character-constant L'\''
+whitespace
+character-constant L'\"'
+whitespace
+character-constant L'\?'
+whitespace
+character-constant L'\\'
+whitespace
+character-constant L'\a'
+whitespace
+character-constant L'\b'
+whitespace
+character-constant L'\f'
+whitespace
+character-constant L'\n'
+whitespace
+character-constant L'\r'
+whitespace
+character-constant L'\t'
+whitespace
+character-constant L'\v'
+new-line
+character-constant L'\x03C0'
+whitespace
+character-constant L'\x0001D11E'
+whitespace
+character-constant L'\x3C0'
+whitespace
+character-constant L'\x1D11E'
+whitespace
+character-constant L'\101'
+new-line
+character-constant 'abc'
+new-line

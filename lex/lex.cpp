@@ -393,6 +393,7 @@ std::string prepare_match(const std::vector<Rule> &rules) {
             first = false;
         }
         result << "if(match[" << index++ << "].matched) { // " << rule.name << "\n";
+//        result << "  std::cout << \"matched " << rule.name << "\\n\";\n";
         if (!string_trim(rule.action).empty()) {
             result << "  const auto &it = match.str(0);\n";
             auto lines = string_split_and_trim(rule.action, "\n");

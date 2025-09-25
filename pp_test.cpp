@@ -209,7 +209,8 @@ void pp_test() {
         "100-keywords",
         "100-operators",
         "200-basic-floating",
-        "200-basic-integer-suffix"
+        "200-basic-integer-suffix",
+        "200-character-literal"
     };
 
     for (auto &test : tests) {
