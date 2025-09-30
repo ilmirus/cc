@@ -89,8 +89,8 @@ Hash = #
 inline identifierRest = [_a-zA-Z0-9]
 inline notId = (?!identifierRest)
 
-CharacterConstant = L?'([^'\n\\]|escapeSequence)*('|$) { if (!it.ends_with("'")) throw std::runtime_error("Unclosed character constant"); }
-StringLiteral = L?".*?("|$) { if (!it.ends_with("\"")) throw std::runtime_error("Unclosed string literal"); }
+CharacterConstant = L?'([^'\n\\]|escapeSequence)*('|$|\n) { if (!it.ends_with("'")) throw std::runtime_error("Unclosed character constant"); }
+StringLiteral = L?"([^"\n\\]|escapeSequence)*("|$|\n) { if (!it.ends_with("\"")) throw std::runtime_error("Unclosed string literal"); }
 
 inline escapeSequence = \\(x[0-9a-fA-F]+|[0-7]{1,3}|['"?\\abfnrtv])
 
