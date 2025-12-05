@@ -1,3 +1,5 @@
+all: pp
+
 pp: main.cpp \
 		preprocessor.cpp preprocessor.h \
 		pp_test.cpp pp_test.h \

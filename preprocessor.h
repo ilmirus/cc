@@ -6,13 +6,13 @@
 #include "pp_input.h"
 
 struct PPToken {
-	Locus locus;
+  Locus locus;
 
-	enum {
+  enum {
 #include "pptoken.enum.generated.cpp"
-	} kind;
+  } kind;
 
-	std::string value;
+  std::string value;
 };
 
-std::vector<PPToken> pp_scan(const std::string &file, std::string input);
+std::vector<PPToken> pp_scan(const std::string &file, const std::string &input);
