@@ -335,10 +335,11 @@ std::string prepare_regex(const std::vector<Rule> &rules) {
     if (rule.is_inline) {
       continue;
     }
-    result << "R\"((";
+    result << "std::regex(R\"(^";
     auto input = Input{rule.pattern, 0};
     while (input.peek() != 0) {
-      switch (char c = input.peek()) {
+      char c = input.peek();
+      switch (c) {
         case '\\':
           result << c;
           result << input.next();
@@ -354,11 +355,11 @@ std::string prepare_regex(const std::vector<Rule> &rules) {
       }
       input.skip();
     }
-    result << ')';
+    result << ")\")";
     if (i + 1 != rules.size()) {
-      result << '|';
+      result << ',';
     }
-    result << ")\" // " << rule.name << "\n";
+    result << " // " << rule.name << "\n";
   }
   return result.str();
 }
@@ -382,7 +383,7 @@ std::string prepare_enum(const std::vector<Rule> &rules) {
 std::string prepare_match(const std::vector<Rule> &rules) {
   std::stringstream result;
   bool first = true;
-  size_t index = 1;
+  size_t index = 0;
   for (auto &rule: rules) {
     // Skip metarules
     if (rule.pattern.empty()) {
@@ -397,8 +398,8 @@ std::string prepare_match(const std::vector<Rule> &rules) {
     } else {
       first = false;
     }
-    result << "if(match[" << index++ << "].matched) { // " << rule.name << "\n";
-    // result << "  std::cout << \"matched " << rule.name << "\\n\";\n";
+    result << "if(std::regex_search(iter, end, match, patterns[" << index++ << "])) { // " << rule.name << "\n";
+    //        result << "  std::cout << \"matched " << rule.name << "\\n\";\n";
     if (!string_trim(rule.action).empty()) {
       result << "  const auto &it = match.str(0);\n";
       auto lines = string_split_and_trim(rule.action, "\n");
@@ -406,7 +407,7 @@ std::string prepare_match(const std::vector<Rule> &rules) {
         result << "  " << line << "\n";
       }
     }
-    result << "  token.kind = PPToken::k" << (rule.metarule.empty() ? rule.name : rule.metarule) << ";\n";
+    result << "  kind = PPToken::k" << (rule.metarule.empty() ? rule.name : rule.metarule) << ";\n";
   }
   result << "}\n";
   return result.str();

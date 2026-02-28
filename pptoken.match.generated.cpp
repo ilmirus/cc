@@ -1,179 +1,179 @@
-if(match[1].matched) { // NewLine
-  token.kind = PPToken::kNewLine;
-} else if(match[2].matched) { // singleLineComment
-  token.kind = PPToken::kWhitespace;
-} else if(match[3].matched) { // multiLineComment
+if(std::regex_search(iter, end, match, patterns[0])) { // NewLine
+  kind = PPToken::kNewLine;
+} else if(std::regex_search(iter, end, match, patterns[1])) { // singleLineComment
+  kind = PPToken::kWhitespace;
+} else if(std::regex_search(iter, end, match, patterns[2])) { // multiLineComment
   const auto &it = match.str(0);
   { if (!it.ends_with("*/")) throw std::runtime_error("Unclosed multiline comment"); }
-  token.kind = PPToken::kWhitespace;
-} else if(match[4].matched) { // whitespace
-  token.kind = PPToken::kWhitespace;
-} else if(match[5].matched) { // PPNumber
-  token.kind = PPToken::kPPNumber;
-} else if(match[6].matched) { // Auto
-  token.kind = PPToken::kAuto;
-} else if(match[7].matched) { // Break
-  token.kind = PPToken::kBreak;
-} else if(match[8].matched) { // Case
-  token.kind = PPToken::kCase;
-} else if(match[9].matched) { // Char
-  token.kind = PPToken::kChar;
-} else if(match[10].matched) { // Const
-  token.kind = PPToken::kConst;
-} else if(match[11].matched) { // Continue
-  token.kind = PPToken::kContinue;
-} else if(match[12].matched) { // Default
-  token.kind = PPToken::kDefault;
-} else if(match[13].matched) { // Do
-  token.kind = PPToken::kDo;
-} else if(match[14].matched) { // Double
-  token.kind = PPToken::kDouble;
-} else if(match[15].matched) { // Else
-  token.kind = PPToken::kElse;
-} else if(match[16].matched) { // Enum
-  token.kind = PPToken::kEnum;
-} else if(match[17].matched) { // Extern
-  token.kind = PPToken::kExtern;
-} else if(match[18].matched) { // Float
-  token.kind = PPToken::kFloat;
-} else if(match[19].matched) { // For
-  token.kind = PPToken::kFor;
-} else if(match[20].matched) { // Goto
-  token.kind = PPToken::kGoto;
-} else if(match[21].matched) { // If
-  token.kind = PPToken::kIf;
-} else if(match[22].matched) { // Int
-  token.kind = PPToken::kInt;
-} else if(match[23].matched) { // Long
-  token.kind = PPToken::kLong;
-} else if(match[24].matched) { // Register
-  token.kind = PPToken::kRegister;
-} else if(match[25].matched) { // Return
-  token.kind = PPToken::kReturn;
-} else if(match[26].matched) { // Short
-  token.kind = PPToken::kShort;
-} else if(match[27].matched) { // Signed
-  token.kind = PPToken::kSigned;
-} else if(match[28].matched) { // Sizeof
-  token.kind = PPToken::kSizeof;
-} else if(match[29].matched) { // Static
-  token.kind = PPToken::kStatic;
-} else if(match[30].matched) { // Struct
-  token.kind = PPToken::kStruct;
-} else if(match[31].matched) { // Switch
-  token.kind = PPToken::kSwitch;
-} else if(match[32].matched) { // Typedef
-  token.kind = PPToken::kTypedef;
-} else if(match[33].matched) { // Union
-  token.kind = PPToken::kUnion;
-} else if(match[34].matched) { // Unsigned
-  token.kind = PPToken::kUnsigned;
-} else if(match[35].matched) { // Void
-  token.kind = PPToken::kVoid;
-} else if(match[36].matched) { // Volatile
-  token.kind = PPToken::kVolatile;
-} else if(match[37].matched) { // While
-  token.kind = PPToken::kWhile;
-} else if(match[38].matched) { // DotDotDot
-  token.kind = PPToken::kDotDotDot;
-} else if(match[39].matched) { // Semicolon
-  token.kind = PPToken::kSemicolon;
-} else if(match[40].matched) { // OpenSquare
-  token.kind = PPToken::kOpenSquare;
-} else if(match[41].matched) { // CloseSquare
-  token.kind = PPToken::kCloseSquare;
-} else if(match[42].matched) { // OpenParen
-  token.kind = PPToken::kOpenParen;
-} else if(match[43].matched) { // CloseParen
-  token.kind = PPToken::kCloseParen;
-} else if(match[44].matched) { // Dot
-  token.kind = PPToken::kDot;
-} else if(match[45].matched) { // Arrow
-  token.kind = PPToken::kArrow;
-} else if(match[46].matched) { // Inv
-  token.kind = PPToken::kInv;
-} else if(match[47].matched) { // Inc
-  token.kind = PPToken::kInc;
-} else if(match[48].matched) { // Dec
-  token.kind = PPToken::kDec;
-} else if(match[49].matched) { // AndAnd
-  token.kind = PPToken::kAndAnd;
-} else if(match[50].matched) { // AndAssign
-  token.kind = PPToken::kAndAssign;
-} else if(match[51].matched) { // And
-  token.kind = PPToken::kAnd;
-} else if(match[52].matched) { // StarAssign
-  token.kind = PPToken::kStarAssign;
-} else if(match[53].matched) { // Star
-  token.kind = PPToken::kStar;
-} else if(match[54].matched) { // Minus
-  token.kind = PPToken::kMinus;
-} else if(match[55].matched) { // NotAssign
-  token.kind = PPToken::kNotAssign;
-} else if(match[56].matched) { // Not
-  token.kind = PPToken::kNot;
-} else if(match[57].matched) { // DivAssign
-  token.kind = PPToken::kDivAssign;
-} else if(match[58].matched) { // Div
-  token.kind = PPToken::kDiv;
-} else if(match[59].matched) { // ModAssign
-  token.kind = PPToken::kModAssign;
-} else if(match[60].matched) { // Mod
-  token.kind = PPToken::kMod;
-} else if(match[61].matched) { // PlusAssign
-  token.kind = PPToken::kPlusAssign;
-} else if(match[62].matched) { // Plus
-  token.kind = PPToken::kPlus;
-} else if(match[63].matched) { // ShiftLeftAssign
-  token.kind = PPToken::kShiftLeftAssign;
-} else if(match[64].matched) { // ShiftLeft
-  token.kind = PPToken::kShiftLeft;
-} else if(match[65].matched) { // ShiftRightAssign
-  token.kind = PPToken::kShiftRightAssign;
-} else if(match[66].matched) { // ShiftRight
-  token.kind = PPToken::kShiftRight;
-} else if(match[67].matched) { // LessEq
-  token.kind = PPToken::kLessEq;
-} else if(match[68].matched) { // Less
-  token.kind = PPToken::kLess;
-} else if(match[69].matched) { // GrEq
-  token.kind = PPToken::kGrEq;
-} else if(match[70].matched) { // Gr
-  token.kind = PPToken::kGr;
-} else if(match[71].matched) { // EqEq
-  token.kind = PPToken::kEqEq;
-} else if(match[72].matched) { // XorAssign
-  token.kind = PPToken::kXorAssign;
-} else if(match[73].matched) { // Xor
-  token.kind = PPToken::kXor;
-} else if(match[74].matched) { // OrOr
-  token.kind = PPToken::kOrOr;
-} else if(match[75].matched) { // OrAssign
-  token.kind = PPToken::kOrAssign;
-} else if(match[76].matched) { // Or
-  token.kind = PPToken::kOr;
-} else if(match[77].matched) { // Query
-  token.kind = PPToken::kQuery;
-} else if(match[78].matched) { // Colon
-  token.kind = PPToken::kColon;
-} else if(match[79].matched) { // Assign
-  token.kind = PPToken::kAssign;
-} else if(match[80].matched) { // Comma
-  token.kind = PPToken::kComma;
-} else if(match[81].matched) { // HashHash
-  token.kind = PPToken::kHashHash;
-} else if(match[82].matched) { // Hash
-  token.kind = PPToken::kHash;
-} else if(match[83].matched) { // CharacterConstant
+  kind = PPToken::kWhitespace;
+} else if(std::regex_search(iter, end, match, patterns[3])) { // whitespace
+  kind = PPToken::kWhitespace;
+} else if(std::regex_search(iter, end, match, patterns[4])) { // PPNumber
+  kind = PPToken::kPPNumber;
+} else if(std::regex_search(iter, end, match, patterns[5])) { // Auto
+  kind = PPToken::kAuto;
+} else if(std::regex_search(iter, end, match, patterns[6])) { // Break
+  kind = PPToken::kBreak;
+} else if(std::regex_search(iter, end, match, patterns[7])) { // Case
+  kind = PPToken::kCase;
+} else if(std::regex_search(iter, end, match, patterns[8])) { // Char
+  kind = PPToken::kChar;
+} else if(std::regex_search(iter, end, match, patterns[9])) { // Const
+  kind = PPToken::kConst;
+} else if(std::regex_search(iter, end, match, patterns[10])) { // Continue
+  kind = PPToken::kContinue;
+} else if(std::regex_search(iter, end, match, patterns[11])) { // Default
+  kind = PPToken::kDefault;
+} else if(std::regex_search(iter, end, match, patterns[12])) { // Do
+  kind = PPToken::kDo;
+} else if(std::regex_search(iter, end, match, patterns[13])) { // Double
+  kind = PPToken::kDouble;
+} else if(std::regex_search(iter, end, match, patterns[14])) { // Else
+  kind = PPToken::kElse;
+} else if(std::regex_search(iter, end, match, patterns[15])) { // Enum
+  kind = PPToken::kEnum;
+} else if(std::regex_search(iter, end, match, patterns[16])) { // Extern
+  kind = PPToken::kExtern;
+} else if(std::regex_search(iter, end, match, patterns[17])) { // Float
+  kind = PPToken::kFloat;
+} else if(std::regex_search(iter, end, match, patterns[18])) { // For
+  kind = PPToken::kFor;
+} else if(std::regex_search(iter, end, match, patterns[19])) { // Goto
+  kind = PPToken::kGoto;
+} else if(std::regex_search(iter, end, match, patterns[20])) { // If
+  kind = PPToken::kIf;
+} else if(std::regex_search(iter, end, match, patterns[21])) { // Int
+  kind = PPToken::kInt;
+} else if(std::regex_search(iter, end, match, patterns[22])) { // Long
+  kind = PPToken::kLong;
+} else if(std::regex_search(iter, end, match, patterns[23])) { // Register
+  kind = PPToken::kRegister;
+} else if(std::regex_search(iter, end, match, patterns[24])) { // Return
+  kind = PPToken::kReturn;
+} else if(std::regex_search(iter, end, match, patterns[25])) { // Short
+  kind = PPToken::kShort;
+} else if(std::regex_search(iter, end, match, patterns[26])) { // Signed
+  kind = PPToken::kSigned;
+} else if(std::regex_search(iter, end, match, patterns[27])) { // Sizeof
+  kind = PPToken::kSizeof;
+} else if(std::regex_search(iter, end, match, patterns[28])) { // Static
+  kind = PPToken::kStatic;
+} else if(std::regex_search(iter, end, match, patterns[29])) { // Struct
+  kind = PPToken::kStruct;
+} else if(std::regex_search(iter, end, match, patterns[30])) { // Switch
+  kind = PPToken::kSwitch;
+} else if(std::regex_search(iter, end, match, patterns[31])) { // Typedef
+  kind = PPToken::kTypedef;
+} else if(std::regex_search(iter, end, match, patterns[32])) { // Union
+  kind = PPToken::kUnion;
+} else if(std::regex_search(iter, end, match, patterns[33])) { // Unsigned
+  kind = PPToken::kUnsigned;
+} else if(std::regex_search(iter, end, match, patterns[34])) { // Void
+  kind = PPToken::kVoid;
+} else if(std::regex_search(iter, end, match, patterns[35])) { // Volatile
+  kind = PPToken::kVolatile;
+} else if(std::regex_search(iter, end, match, patterns[36])) { // While
+  kind = PPToken::kWhile;
+} else if(std::regex_search(iter, end, match, patterns[37])) { // DotDotDot
+  kind = PPToken::kDotDotDot;
+} else if(std::regex_search(iter, end, match, patterns[38])) { // Semicolon
+  kind = PPToken::kSemicolon;
+} else if(std::regex_search(iter, end, match, patterns[39])) { // OpenSquare
+  kind = PPToken::kOpenSquare;
+} else if(std::regex_search(iter, end, match, patterns[40])) { // CloseSquare
+  kind = PPToken::kCloseSquare;
+} else if(std::regex_search(iter, end, match, patterns[41])) { // OpenParen
+  kind = PPToken::kOpenParen;
+} else if(std::regex_search(iter, end, match, patterns[42])) { // CloseParen
+  kind = PPToken::kCloseParen;
+} else if(std::regex_search(iter, end, match, patterns[43])) { // Dot
+  kind = PPToken::kDot;
+} else if(std::regex_search(iter, end, match, patterns[44])) { // Arrow
+  kind = PPToken::kArrow;
+} else if(std::regex_search(iter, end, match, patterns[45])) { // Inv
+  kind = PPToken::kInv;
+} else if(std::regex_search(iter, end, match, patterns[46])) { // Inc
+  kind = PPToken::kInc;
+} else if(std::regex_search(iter, end, match, patterns[47])) { // Dec
+  kind = PPToken::kDec;
+} else if(std::regex_search(iter, end, match, patterns[48])) { // AndAnd
+  kind = PPToken::kAndAnd;
+} else if(std::regex_search(iter, end, match, patterns[49])) { // AndAssign
+  kind = PPToken::kAndAssign;
+} else if(std::regex_search(iter, end, match, patterns[50])) { // And
+  kind = PPToken::kAnd;
+} else if(std::regex_search(iter, end, match, patterns[51])) { // StarAssign
+  kind = PPToken::kStarAssign;
+} else if(std::regex_search(iter, end, match, patterns[52])) { // Star
+  kind = PPToken::kStar;
+} else if(std::regex_search(iter, end, match, patterns[53])) { // Minus
+  kind = PPToken::kMinus;
+} else if(std::regex_search(iter, end, match, patterns[54])) { // NotAssign
+  kind = PPToken::kNotAssign;
+} else if(std::regex_search(iter, end, match, patterns[55])) { // Not
+  kind = PPToken::kNot;
+} else if(std::regex_search(iter, end, match, patterns[56])) { // DivAssign
+  kind = PPToken::kDivAssign;
+} else if(std::regex_search(iter, end, match, patterns[57])) { // Div
+  kind = PPToken::kDiv;
+} else if(std::regex_search(iter, end, match, patterns[58])) { // ModAssign
+  kind = PPToken::kModAssign;
+} else if(std::regex_search(iter, end, match, patterns[59])) { // Mod
+  kind = PPToken::kMod;
+} else if(std::regex_search(iter, end, match, patterns[60])) { // PlusAssign
+  kind = PPToken::kPlusAssign;
+} else if(std::regex_search(iter, end, match, patterns[61])) { // Plus
+  kind = PPToken::kPlus;
+} else if(std::regex_search(iter, end, match, patterns[62])) { // ShiftLeftAssign
+  kind = PPToken::kShiftLeftAssign;
+} else if(std::regex_search(iter, end, match, patterns[63])) { // ShiftLeft
+  kind = PPToken::kShiftLeft;
+} else if(std::regex_search(iter, end, match, patterns[64])) { // ShiftRightAssign
+  kind = PPToken::kShiftRightAssign;
+} else if(std::regex_search(iter, end, match, patterns[65])) { // ShiftRight
+  kind = PPToken::kShiftRight;
+} else if(std::regex_search(iter, end, match, patterns[66])) { // LessEq
+  kind = PPToken::kLessEq;
+} else if(std::regex_search(iter, end, match, patterns[67])) { // Less
+  kind = PPToken::kLess;
+} else if(std::regex_search(iter, end, match, patterns[68])) { // GrEq
+  kind = PPToken::kGrEq;
+} else if(std::regex_search(iter, end, match, patterns[69])) { // Gr
+  kind = PPToken::kGr;
+} else if(std::regex_search(iter, end, match, patterns[70])) { // EqEq
+  kind = PPToken::kEqEq;
+} else if(std::regex_search(iter, end, match, patterns[71])) { // XorAssign
+  kind = PPToken::kXorAssign;
+} else if(std::regex_search(iter, end, match, patterns[72])) { // Xor
+  kind = PPToken::kXor;
+} else if(std::regex_search(iter, end, match, patterns[73])) { // OrOr
+  kind = PPToken::kOrOr;
+} else if(std::regex_search(iter, end, match, patterns[74])) { // OrAssign
+  kind = PPToken::kOrAssign;
+} else if(std::regex_search(iter, end, match, patterns[75])) { // Or
+  kind = PPToken::kOr;
+} else if(std::regex_search(iter, end, match, patterns[76])) { // Query
+  kind = PPToken::kQuery;
+} else if(std::regex_search(iter, end, match, patterns[77])) { // Colon
+  kind = PPToken::kColon;
+} else if(std::regex_search(iter, end, match, patterns[78])) { // Assign
+  kind = PPToken::kAssign;
+} else if(std::regex_search(iter, end, match, patterns[79])) { // Comma
+  kind = PPToken::kComma;
+} else if(std::regex_search(iter, end, match, patterns[80])) { // HashHash
+  kind = PPToken::kHashHash;
+} else if(std::regex_search(iter, end, match, patterns[81])) { // Hash
+  kind = PPToken::kHash;
+} else if(std::regex_search(iter, end, match, patterns[82])) { // CharacterConstant
   const auto &it = match.str(0);
   { if (!it.ends_with("'")) throw std::runtime_error("Unclosed character constant"); }
-  token.kind = PPToken::kCharacterConstant;
-} else if(match[84].matched) { // StringLiteral
+  kind = PPToken::kCharacterConstant;
+} else if(std::regex_search(iter, end, match, patterns[83])) { // StringLiteral
   const auto &it = match.str(0);
   { if (!it.ends_with("\"")) throw std::runtime_error("Unclosed string literal"); }
-  token.kind = PPToken::kStringLiteral;
-} else if(match[85].matched) { // Identifier
-  token.kind = PPToken::kIdentifier;
-} else if(match[86].matched) { // NonWhiteSpace
-  token.kind = PPToken::kNonWhiteSpace;
+  kind = PPToken::kStringLiteral;
+} else if(std::regex_search(iter, end, match, patterns[84])) { // Identifier
+  kind = PPToken::kIdentifier;
+} else if(std::regex_search(iter, end, match, patterns[85])) { // NonWhiteSpace
+  kind = PPToken::kNonWhiteSpace;
 }
