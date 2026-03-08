@@ -6,7 +6,7 @@ pp: main.cpp \
 		file_utils.cpp file_utils.h \
 		string_utils.cpp string_utils.h \
 		pp_input.h \
-		pptoken.enum.generated.cpp pptoken.regex.generated.cpp pptoken.match.generated.cpp
+		pptoken.enum.generated.cpp pptoken.regex.generated.cpp pptoken.match.generated.cpp pptoken.begin.generated.cpp
 	g++ -o pp -std=c++20 -Wno-narrowing -g \
 		main.cpp \
 		preprocessor.cpp \
@@ -29,6 +29,9 @@ pptoken.regex.generated.cpp: lex/lex pptoken.lex
 	lex/lex pptoken.lex
 
 pptoken.match.generated.cpp: lex/lex pptoken.lex
+	lex/lex pptoken.lex
+
+pptoken.begin.generated.cpp: lex/lex pptoken.lex
 	lex/lex pptoken.lex
 
 clean:

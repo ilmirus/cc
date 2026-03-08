@@ -172,6 +172,8 @@ static std::string stringify(const PPToken &pp_token) {
       return "new-line";
     case PPToken::kIdentifier:
       return "identifier "s + pp_token.value;
+    case PPToken::kHeaderName:
+      return "header-name "s + pp_token.value;
     case PPToken::kPPNumber:
       return "pp-number "s + pp_token.value;
     case PPToken::kCharacterConstant:
@@ -212,7 +214,8 @@ void pp_test() {
     "200-basic-floating",
     "200-basic-integer-suffix",
     "200-character-literal",
-    "200-escape-sequence"
+    "200-escape-sequence",
+    "200-header-name"
   };
 
   for (auto &test: tests) {

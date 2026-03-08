@@ -37,6 +37,7 @@ std::vector<PPToken> pp_scan(const std::string &file, const std::string &input) 
   auto iter = pp_input.begin(), end = pp_input.end();
 
   auto locus = Locus{file, 1, 1};
+#include "pptoken.begin.generated.cpp"
   while (iter != end) {
     auto kind = PPToken::kInvalid;
 #include "pptoken.match.generated.cpp"

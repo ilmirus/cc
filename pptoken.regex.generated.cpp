@@ -35,6 +35,7 @@ std::regex(R"(^unsigned(?![_a-zA-Z0-9]))"), // Unsigned
 std::regex(R"(^void(?![_a-zA-Z0-9]))"), // Void
 std::regex(R"(^volatile(?![_a-zA-Z0-9]))"), // Volatile
 std::regex(R"(^while(?![_a-zA-Z0-9]))"), // While
+std::regex(R"(^<[^\n]*>|"[^\n]*")"), // HeaderName
 std::regex(R"(^\.\.\.)"), // DotDotDot
 std::regex(R"(^;)"), // Semicolon
 std::regex(R"(^\[)"), // OpenSquare

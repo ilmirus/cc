@@ -1,6 +1,16 @@
-NewLine = \n
+BEGIN {
+  enum HeaderState {
+    kNone, kNewLine, kHash, kInclude
+  } header_state = kNewLine;
+}
 
-Whitespace = singleLineComment | multiLineComment | whitespace
+BEFORE { bool reset_header_state = true; }
+
+AFTER { if (reset_header_state) header_state = kNone; }
+
+NewLine = \n { header_state = kNewLine; reset_header_state = false; }
+
+Whitespace = singleLineComment | multiLineComment | whitespace { reset_header_state = false; }
 singleLineComment = //[^\n]*
 multiLineComment = /\*[\s\S]*?(\*/|$) { if (!it.ends_with("*/")) throw std::runtime_error("Unclosed multiline comment"); }
 whitespace = [ \t\r\f\v]+
@@ -39,6 +49,8 @@ Unsigned = unsigned notId
 Void = void notId
 Volatile = volatile notId
 While = while notId
+
+HeaderName if (header_state == kInclude) = <[^\n]*>|"[^\n]*"
 
 DotDotDot = \.\.\.
 Semicolon = ;
@@ -84,7 +96,12 @@ Colon = :
 Assign = =
 Comma = ,
 HashHash = ##
-Hash = #
+Hash = # {
+  if (header_state == kNewLine) {
+    header_state = kHash;
+    reset_header_state = false;
+  }
+}
 
 inline identifierRest = [_a-zA-Z0-9]
 inline notId = (?!identifierRest)
@@ -94,6 +111,11 @@ StringLiteral = L?"([^"\n\\]|escapeSequence)*("|$|\n) { if (!it.ends_with("\""))
 
 inline escapeSequence = \\(x[0-9a-fA-F]+|[0-7]{1,3}|['"?\\abfnrtv])
 
-Identifier = [_a-zA-Z] identifierRest*
+Identifier = [_a-zA-Z] identifierRest* {
+  if (header_state == kHash && it == "include") {
+    header_state = kInclude;
+    reset_header_state = false;
+  }
+}
 
 NonWhiteSpace = .

@@ -22,9 +22,14 @@ struct Rule {
   std::string name;
   std::string pattern;
   std::string action;
+  std::string condition;
   std::string metarule;
   bool is_inline;
 };
+
+std::string begin_block;
+std::string before_block;
+std::string after_block;
 
 bool trace = false;
 
@@ -185,41 +190,39 @@ std::string parse_action(Input &input, const std::string &name) {
   return result.str();
 }
 
-// rule = inline? identifier \s* '=' \s* pattern (\s '{' action '}')? new-line
-Rule parse_rule(Input &input) {
-  if (trace)
-    std::cout << "\n====\nparse_rule: " << input.rest() << std::endl;
+Rule parse_rule_after_name(Input &input, const std::string &name, bool is_inline) {
+  std::string condition;
 
-  assert(is_identifier_start(input.peek()));
-  auto name = parse_identifier(input);
-  bool is_inline = name == "inline";
-  skip_ws(input);
-  if (is_inline) {
-    name = parse_identifier(input);
-  }
-  skip_ws(input);
-  if (input.peek() != '=') {
-    throw std::runtime_error("Expected '=' after name in rule: " + name);
-  }
-  input.skip();
-  skip_ws(input);
-  auto pattern = parse_pattern(input, name);
-  skip_ws(input);
-  std::string action;
-  if (input.peek() == '{') {
-    action = parse_action(input, name);
-  }
-  skip_ws(input);
-  if (input.peek() != '\n' && input.peek() != 0) {
-    throw std::runtime_error(
-      "Expected new-line after rule " + name + " but rest is: " + input.rest()
-    );
-  }
-  while (input.peek() == '\n') {
-    input.skip();
+  if (input.peek() == 'i' && input.peek(1) == 'f' && !is_identifier(input.peek(2))) {
+    input.skip(2);
+    skip_ws(input);
+    if (input.peek() != '(') throw std::runtime_error("Expected '(' after 'if' in " + name);
+    condition = parse_grouping(input, name, '(', ')');
     skip_ws(input);
   }
-  return Rule{name, pattern, action, "", is_inline};
+
+  if (input.peek() != '=') throw std::runtime_error("Expected '=' in rule " + name);
+  input.skip();
+  skip_ws(input);
+
+  auto pattern = parse_pattern(input, name);
+  skip_ws(input);
+
+  std::string action;
+  if (input.peek() == '{') action = parse_action(input, name);
+
+  return Rule{name, pattern, action, condition, "", is_inline};
+}
+
+Rule parse_rule(Input &input) {
+  assert(is_identifier_start(input.peek()));
+  auto name = parse_identifier(input);
+  bool is_inline = (name == "inline");
+  if (is_inline) {
+    skip_ws(input);
+    name = parse_identifier(input);
+  }
+  return parse_rule_after_name(input, name, is_inline);
 }
 
 std::vector<Rule> parse(Input &input) {
@@ -228,7 +231,35 @@ std::vector<Rule> parse(Input &input) {
 
   std::vector<Rule> result;
   while (input.peek() != 0) {
-    result.push_back(parse_rule(input));
+    skip_ws(input);
+    if (input.peek() == '\n') {
+      input.skip();
+      continue;
+    }
+    if (input.peek() == 0) break;
+
+    auto name = parse_identifier(input);
+    skip_ws(input);
+
+    if (name == "BEGIN" || name == "BEFORE" || name == "AFTER") {
+      auto action = parse_action(input, name);
+      if (name == "BEGIN") begin_block = action;
+      else if (name == "BEFORE") before_block = action;
+      else after_block = action;
+    } else {
+      bool is_inline = (name == "inline");
+      if (is_inline) {
+        name = parse_identifier(input);
+        skip_ws(input);
+      }
+      result.push_back(parse_rule_after_name(input, name, is_inline));
+    }
+
+    skip_ws(input);
+    while (input.peek() == '\n') {
+      input.skip();
+      skip_ws(input);
+    }
   }
   return result;
 }
@@ -322,6 +353,14 @@ void analyze_and_inline(std::vector<Rule> &rules) {
   }
 }
 
+std::string unwrap_action(const std::string &action) {
+  std::string s = string_trim(action);
+  if (s.starts_with('{') && s.ends_with('}')) {
+    return s.substr(1, s.size() - 2);
+  }
+  return s;
+}
+
 std::string prepare_regex(const std::vector<Rule> &rules) {
   std::stringstream result;
   // Replace ( with (?: and make final string with regex
@@ -382,6 +421,11 @@ std::string prepare_enum(const std::vector<Rule> &rules) {
 
 std::string prepare_match(const std::vector<Rule> &rules) {
   std::stringstream result;
+  
+  if (!before_block.empty()) {
+    result << unwrap_action(before_block) << "\n";
+  }
+
   bool first = true;
   size_t index = 0;
   for (auto &rule: rules) {
@@ -398,8 +442,13 @@ std::string prepare_match(const std::vector<Rule> &rules) {
     } else {
       first = false;
     }
-    result << "if(std::regex_search(iter, end, match, patterns[" << index++ << "])) { // " << rule.name << "\n";
-    //        result << "  std::cout << \"matched " << rule.name << "\\n\";\n";
+
+    if (!rule.condition.empty()) {
+      result << "if((" << rule.condition << ") && std::regex_search(iter, end, match, patterns[" << index++ << "])) {\n";
+    } else {
+      result << "if(std::regex_search(iter, end, match, patterns[" << index++ << "])) {\n";
+    }
+
     if (!string_trim(rule.action).empty()) {
       result << "  const auto &it = match.str(0);\n";
       auto lines = string_split_and_trim(rule.action, "\n");
@@ -410,7 +459,16 @@ std::string prepare_match(const std::vector<Rule> &rules) {
     result << "  kind = PPToken::k" << (rule.metarule.empty() ? rule.name : rule.metarule) << ";\n";
   }
   result << "}\n";
+
+  if (!after_block.empty()) {
+    result << unwrap_action(after_block) << "\n";
+  }
+
   return result.str();
+}
+
+std::string prepare_begin() {
+  return unwrap_action(begin_block);
 }
 
 int main(int argc, char **argv) {
@@ -423,5 +481,6 @@ int main(int argc, char **argv) {
   file_dump(string_replace(argv[1], ".lex", ".regex.generated.cpp"), prepare_regex(rules));
   file_dump(string_replace(argv[1], ".lex", ".enum.generated.cpp"), prepare_enum(rules));
   file_dump(string_replace(argv[1], ".lex", ".match.generated.cpp"), prepare_match(rules));
+  file_dump(string_replace(argv[1], ".lex", ".begin.generated.cpp"), prepare_begin());
   return 0;
 }

@@ -1,0 +1,51 @@
+operator #
+identifier include
+whitespace
+header-name <foo>
+new-line
+operator #
+identifier include
+whitespace
+header-name "foo"
+new-line
+operator #
+identifier notinclude
+whitespace
+operator <
+identifier foo
+operator >
+new-line
+operator #
+identifier notinclude
+whitespace
+string-literal "foo"
+new-line
+identifier something
+whitespace
+operator #
+identifier include
+whitespace
+operator <
+identifier foo
+operator >
+new-line
+identifier something
+whitespace
+operator #
+identifier include
+whitespace
+string-literal "foo"
+new-line
+operator #
+whitespace
+identifier include
+whitespace
+header-name "foo"
+new-line
+whitespace
+operator #
+identifier include
+whitespace
+header-name "foo"
+new-line
+new-line
