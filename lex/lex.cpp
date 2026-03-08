@@ -344,7 +344,11 @@ void analyze_and_inline(std::vector<Rule> &rules) {
         if (subrule->is_inline) {
           throw std::runtime_error("Inline rule '" + sub + "' cannot be subrule of " + rule.name);
         }
-        subrule->action += "\n" + rule.action;
+        if (subrule->action.empty()) {
+          subrule->action = rule.action;
+        } else {
+          subrule->action += "\n" + rule.action;
+        }
         subrule->metarule = rule.name;
       }
       rule.pattern = "";
@@ -421,7 +425,7 @@ std::string prepare_enum(const std::vector<Rule> &rules) {
 
 std::string prepare_match(const std::vector<Rule> &rules) {
   std::stringstream result;
-  
+
   if (!before_block.empty()) {
     result << unwrap_action(before_block) << "\n";
   }
@@ -451,7 +455,7 @@ std::string prepare_match(const std::vector<Rule> &rules) {
 
     if (!string_trim(rule.action).empty()) {
       result << "  const auto &it = match.str(0);\n";
-      auto lines = string_split_and_trim(rule.action, "\n");
+      auto lines = string_split_lines(rule.action);
       for (auto &line: lines) {
         result << "  " << line << "\n";
       }

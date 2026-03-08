@@ -175,10 +175,10 @@ if(std::regex_search(iter, end, match, patterns[0])) {
 } else if(std::regex_search(iter, end, match, patterns[82])) {
   const auto &it = match.str(0);
   {
-  if (header_state == kNewLine) {
-  header_state = kHash;
-  reset_header_state = false;
-  }
+    if (header_state == kNewLine) {
+      header_state = kHash;
+      reset_header_state = false;
+    }
   }
   kind = PPToken::kHash;
 } else if(std::regex_search(iter, end, match, patterns[83])) {
@@ -192,10 +192,10 @@ if(std::regex_search(iter, end, match, patterns[0])) {
 } else if(std::regex_search(iter, end, match, patterns[85])) {
   const auto &it = match.str(0);
   {
-  if (header_state == kHash && it == "include") {
-  header_state = kInclude;
-  reset_header_state = false;
-  }
+    if (header_state == kHash && it == "include") {
+      header_state = kInclude;
+      reset_header_state = false;
+    }
   }
   kind = PPToken::kIdentifier;
 } else if(std::regex_search(iter, end, match, patterns[86])) {

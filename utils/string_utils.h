@@ -10,3 +10,5 @@ std::string string_replace(std::string haystack, const std::string &needle, cons
 std::string string_trim(const std::string &str);
 
 std::vector<std::string> string_split_and_trim(const std::string &str, const std::string &delimiter);
+
+std::vector<std::string> string_split_lines(const std::string& text);

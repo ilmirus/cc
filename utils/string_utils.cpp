@@ -55,3 +55,15 @@ std::vector<std::string> string_split_and_trim(const std::string &str, const std
   }
   return result;
 }
+
+std::vector<std::string> string_split_lines(const std::string& text) {
+  std::vector<std::string> lines;
+  std::istringstream input(text);
+  std::string line;
+
+  while (std::getline(input, line)) {
+    lines.push_back(line);
+  }
+
+  return lines;
+}
