@@ -1,5 +1,4 @@
-pp
-pp.dSYM/
 lex/lex
-lex/lex.dSYM/
+**/*.dSYM/
 .idea
+pptoken/pp_test

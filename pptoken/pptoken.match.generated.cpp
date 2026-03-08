@@ -82,7 +82,7 @@ if(std::regex_search(iter, end, match, patterns[0])) {
   kind = PPToken::kVolatile;
 } else if(std::regex_search(iter, end, match, patterns[36])) {
   kind = PPToken::kWhile;
-} else if(((header_state == kInclude)) && std::regex_search(iter, end, match, patterns[37])) {
+} else if((header_state == kInclude) && std::regex_search(iter, end, match, patterns[37])) {
   kind = PPToken::kHeaderName;
 } else if(std::regex_search(iter, end, match, patterns[38])) {
   kind = PPToken::kDotDotDot;

@@ -4,9 +4,9 @@
 #include <sstream>
 #include <cassert>
 
-#include "file_utils.h"
-#include "preprocessor.h"
-#include "string_utils.h"
+#include "utils/file_utils.h"
+#include "pptoken.h"
+#include "utils/string_utils.h"
 
 static std::string stringify(const PPToken &pp_token) {
   using namespace std::string_literals;
@@ -215,7 +215,9 @@ void pp_test() {
     "200-basic-integer-suffix",
     "200-character-literal",
     "200-escape-sequence",
-    "200-header-name"
+    "200-header-name",
+    "250-dot-ppnum",
+    "300-quote-strange"
   };
 
   for (auto &test: tests) {
@@ -258,4 +260,10 @@ void pp_test() {
 
     std::cout << " OK\n";
   }
+}
+
+int main(int argc, const char **args) {
+  pp_test();
+  std::cout << "DONE\n";
+  return 0;
 }

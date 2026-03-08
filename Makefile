@@ -1,41 +1,40 @@
-all: pp
+all: pptoken/pp_test
 
-pp: main.cpp \
-		preprocessor.cpp preprocessor.h \
-		pp_test.cpp pp_test.h \
-		file_utils.cpp file_utils.h \
-		string_utils.cpp string_utils.h \
-		pp_input.h \
-		pptoken.enum.generated.cpp pptoken.regex.generated.cpp pptoken.match.generated.cpp pptoken.begin.generated.cpp
-	g++ -o pp -std=c++20 -Wno-narrowing -g \
-		main.cpp \
-		preprocessor.cpp \
-		pp_test.cpp \
-		file_utils.cpp \
-		string_utils.cpp
+pptoken/pp_test: pptoken/pptoken.cpp pptoken/pptoken.h \
+		pptoken/pp_test.cpp pptoken/pp_test.h \
+		utils/file_utils.cpp utils/file_utils.h \
+		utils/string_utils.cpp utils/string_utils.h \
+		pptoken/pp_input.h \
+		pptoken/pptoken.enum.generated.cpp pptoken/pptoken.regex.generated.cpp pptoken/pptoken.match.generated.cpp \
+		pptoken/pptoken.begin.generated.cpp
+	g++ -o pptoken/pp_test -std=c++20 -Wno-narrowing -g -I . -I pptoken \
+		pptoken/pptoken.cpp \
+		pptoken/pp_test.cpp \
+		utils/file_utils.cpp \
+		utils/string_utils.cpp
 
 lex/lex: lex/lex.cpp \
-		file_utils.cpp file_utils.h \
-		string_utils.cpp string_utils.h
-	g++ -I . -o lex/lex -std=c++20 -Wno-narrowing -g \
+		utils/file_utils.cpp utils/file_utils.h \
+		utils/string_utils.cpp utils/string_utils.h
+	g++ -I . -o lex/lex -std=c++20 -Wno-narrowing -g -I utils \
 		lex/lex.cpp \
-		file_utils.cpp \
-		string_utils.cpp
+		utils/file_utils.cpp \
+		utils/string_utils.cpp
 
-pptoken.enum.generated.cpp: lex/lex pptoken.lex
-	lex/lex pptoken.lex
+pptoken/pptoken.enum.generated.cpp: lex/lex pptoken/pptoken.lex
+	lex/lex pptoken/pptoken.lex
 
-pptoken.regex.generated.cpp: lex/lex pptoken.lex
-	lex/lex pptoken.lex
+pptoken/pptoken.regex.generated.cpp: lex/lex pptoken/pptoken.lex
+	lex/lex pptoken/pptoken.lex
 
-pptoken.match.generated.cpp: lex/lex pptoken.lex
-	lex/lex pptoken.lex
+pptoken/pptoken.match.generated.cpp: lex/lex pptoken/pptoken.lex
+	lex/lex pptoken/pptoken.lex
 
-pptoken.begin.generated.cpp: lex/lex pptoken.lex
-	lex/lex pptoken.lex
+pptoken/pptoken.begin.generated.cpp: lex/lex pptoken/pptoken.lex
+	lex/lex pptoken/pptoken.lex
 
 clean:
-	rm pp *generated.cpp lex/lex
+	rm pptoken/pp_test *pptoken/generated.cpp lex/lex
 
-test: pp
-	./pp
+test: pptoken/pp_test
+	./pptoken/pp_test

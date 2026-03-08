@@ -1,5 +1,5 @@
-#include "file_utils.h"
-#include "string_utils.h"
+#include "../utils/file_utils.h"
+#include "../utils/string_utils.h"
 #include <iostream>
 #include <sstream>
 #include <cassert>
@@ -444,7 +444,7 @@ std::string prepare_match(const std::vector<Rule> &rules) {
     }
 
     if (!rule.condition.empty()) {
-      result << "if((" << rule.condition << ") && std::regex_search(iter, end, match, patterns[" << index++ << "])) {\n";
+      result << "if(" << rule.condition << " && std::regex_search(iter, end, match, patterns[" << index++ << "])) {\n";
     } else {
       result << "if(std::regex_search(iter, end, match, patterns[" << index++ << "])) {\n";
     }
