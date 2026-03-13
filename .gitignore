@@ -1,4 +1,5 @@
 lex/lex
 **/*.dSYM/
+**/.generated.stamp
 .idea
 pptoken/pp_test

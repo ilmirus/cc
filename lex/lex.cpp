@@ -5,6 +5,7 @@
 #include <cassert>
 #include <format>
 #include <map>
+#include <set>
 #include <cctype>
 #include <ranges>
 
@@ -75,7 +76,9 @@ std::string parse_identifier(Input &input) {
   if (trace)
     std::cout << "\n====\nparse_identifier: " << input.rest() << std::endl;
 
-  assert(is_identifier_start(input.peek()));
+  if (!is_identifier_start(input.peek())) {
+    throw std::runtime_error("Expected identifier, got: " + input.rest());
+  }
   std::string result;
   char c = input.peek();
   while (is_identifier(c)) {
@@ -89,7 +92,9 @@ std::string parse_pattern_char(Input &input, const std::string &rule_name) {
   if (trace)
     std::cout << "\n====\nparse_pattern_char: " << input.rest() << std::endl;
 
-  assert(input.peek() != 0);
+  if (input.peek() == 0) {
+    throw std::runtime_error("Unexpected EOF while parsing pattern in " + rule_name);
+  }
   char c = input.peek();
   std::string result;
   result += c;
@@ -107,7 +112,11 @@ std::string parse_grouping(Input &input, const std::string &rule_name, char begi
   if (trace)
     std::cout << "\n====\nparse_grouping: " << input.rest() << std::endl;
 
-  assert(input.peek() == begin);
+  if (input.peek() != begin) {
+    throw std::runtime_error(
+      std::format("Expected '{}' while parsing grouping in {}", begin, rule_name)
+    );
+  }
   std::stringstream result;
   result << begin;
   char c = input.next();
@@ -168,7 +177,9 @@ std::string parse_action(Input &input, const std::string &name) {
   if (trace)
     std::cout << "\n====\nparse_action: " << input.rest() << std::endl;
 
-  assert(input.peek() == '{');
+  if (input.peek() != '{') {
+    throw std::runtime_error("Expected '{' to start action in " + name);
+  }
   std::stringstream result;
   result << '{';
   char c = input.next();
@@ -215,7 +226,9 @@ Rule parse_rule_after_name(Input &input, const std::string &name, bool is_inline
 }
 
 Rule parse_rule(Input &input) {
-  assert(is_identifier_start(input.peek()));
+  if (!is_identifier_start(input.peek())) {
+    throw std::runtime_error("Expected rule name, got: " + input.rest());
+  }
   auto name = parse_identifier(input);
   bool is_inline = (name == "inline");
   if (is_inline) {
@@ -290,6 +303,45 @@ void analyze_and_inline(std::vector<Rule> &rules) {
     nameToRule[rule.name] = &rule;
   }
 
+  // Detect inline cycles (including mutual recursion) before expansion.
+  std::map<std::string, std::vector<std::string>> inline_deps;
+  for (const auto &[name, rule]: nameToRule) {
+    if (!rule->is_inline) {
+      continue;
+    }
+    for (const auto &[candidateName, candidateRule]: nameToRule) {
+      if (!candidateRule->is_inline) {
+        continue;
+      }
+      if (rule->pattern.find(candidateName) != std::string::npos) {
+        inline_deps[name].push_back(candidateName);
+      }
+    }
+  }
+
+  std::set<std::string> inlines_queue;
+  std::set<std::string> inlines_visited;
+  auto dfs = [&](const auto &self, const std::string &name) -> void {
+    if (inlines_queue.contains(name)) {
+      throw std::runtime_error("Inline recursion cycle detected at rule " + name);
+    }
+    if (inlines_visited.contains(name)) {
+      return;
+    }
+    inlines_queue.insert(name);
+    if (inline_deps.contains(name)) {
+      for (const auto &dep: inline_deps[name]) {
+        self(self, dep);
+      }
+    }
+    inlines_queue.erase(name);
+    inlines_visited.insert(name);
+  };
+
+  for (const auto &[name, _]: inline_deps) {
+    dfs(dfs, name);
+  }
+
   // inline
   for (auto &rule: rules) {
     bool inlined;
@@ -324,7 +376,8 @@ void analyze_and_inline(std::vector<Rule> &rules) {
     } while (inlined);
   }
 
-  // Move action from metarule to subrules and remove its pattern and action.
+  std::set<std::string> metarules;
+  std::map<std::string, std::vector<std::string>> metarule_deps;
   for (auto &rule: rules) {
     bool is_metarule = false;
     for (const auto &key: nameToRule | std::views::keys) {
@@ -333,13 +386,49 @@ void analyze_and_inline(std::vector<Rule> &rules) {
         break;
       }
     }
+    if (!is_metarule) {
+      continue;
+    }
 
-    if (is_metarule) {
-      auto subrules = string_split_and_trim(rule.pattern, "|");
-      for (auto &sub: subrules) {
-        if (!nameToRule.contains(sub)) {
-          throw std::runtime_error("Cannot find subrule '" + sub + "' in rule " + rule.name);
+    auto subrules = string_split_and_trim(rule.pattern, "|");
+    for (auto &sub: subrules) {
+      if (!nameToRule.contains(sub)) {
+        throw std::runtime_error("Cannot find subrule '" + sub + "' in rule " + rule.name);
+      }
+      metarule_deps[rule.name].push_back(sub);
+    }
+    metarules.insert(rule.name);
+  }
+
+  std::set<std::string> metarules_queue;
+  std::set<std::string> metarules_visited;
+  auto dfsMetarules = [&](const auto &self, const std::string &name) -> void {
+    if (metarules_queue.contains(name)) {
+      throw std::runtime_error("Metarule recursion cycle detected at rule " + name);
+    }
+    if (metarules_visited.contains(name)) {
+      return;
+    }
+    metarules_queue.insert(name);
+    if (metarule_deps.contains(name)) {
+      for (const auto &dep: metarule_deps[name]) {
+        if (metarules.contains(dep)) {
+          self(self, dep);
         }
+      }
+    }
+    metarules_queue.erase(name);
+    metarules_visited.insert(name);
+  };
+
+  for (const auto &[name, _]: metarule_deps) {
+    dfsMetarules(dfsMetarules, name);
+  }
+
+  // Move action from metarule to subrules and remove its pattern and action.
+  for (auto &rule: rules) {
+    if (metarule_deps.contains(rule.name)) {
+      for (const auto &sub: metarule_deps[rule.name]) {
         auto *subrule = nameToRule[sub];
         if (subrule->is_inline) {
           throw std::runtime_error("Inline rule '" + sub + "' cannot be subrule of " + rule.name);
@@ -365,6 +454,19 @@ std::string unwrap_action(const std::string &action) {
   return s;
 }
 
+static std::string choose_raw_string_delimiter(const std::string &content) {
+  if (content.find(")\"") == std::string::npos) {
+    return "";
+  }
+  for (size_t i = 0;; ++i) {
+    const auto delimiter = std::format("LEX{}", i);
+    const auto terminator = std::format("){}\"", delimiter);
+    if (content.find(terminator) == std::string::npos) {
+      return delimiter;
+    }
+  }
+}
+
 std::string prepare_regex(const std::vector<Rule> &rules) {
   std::stringstream result;
   // Replace ( with (?: and make final string with regex
@@ -378,27 +480,34 @@ std::string prepare_regex(const std::vector<Rule> &rules) {
     if (rule.is_inline) {
       continue;
     }
-    result << "std::regex(R\"(^";
+    std::stringstream pattern;
+    pattern << '^';
     auto input = Input{rule.pattern, 0};
     while (input.peek() != 0) {
       char c = input.peek();
       switch (c) {
         case '\\':
-          result << c;
-          result << input.next();
+          pattern << c;
+          pattern << input.next();
           break;
         case '(':
-          result << c;
+          pattern << c;
           if (input.peek(1) != '?') {
-            result << "?:";
+            pattern << "?:";
           }
           break;
         default:
-          result << c;
+          pattern << c;
       }
       input.skip();
     }
-    result << ")\")";
+    const auto patternContent = pattern.str();
+    const auto delimiter = choose_raw_string_delimiter(patternContent);
+    if (delimiter.empty()) {
+      result << "std::regex(R\"(" << patternContent << ")\")";
+    } else {
+      result << "std::regex(R\"" << delimiter << "(" << patternContent << ")" << delimiter << "\")";
+    }
     if (i + 1 != rules.size()) {
       result << ',';
     }
@@ -482,6 +591,12 @@ int main(int argc, char **argv) {
   auto input = Input{raw, 0};
   auto rules = parse(input);
   analyze_and_inline(rules);
+  const auto it = std::find_if(rules.begin(), rules.end(), [](const Rule &rule) {
+    return !rule.is_inline && !rule.pattern.empty();
+  });
+  if (it == rules.end()) {
+    throw std::runtime_error("No concrete token rules in lex file: " + std::string(argv[1]));
+  }
   file_dump(string_replace(argv[1], ".lex", ".regex.generated.cpp"), prepare_regex(rules));
   file_dump(string_replace(argv[1], ".lex", ".enum.generated.cpp"), prepare_enum(rules));
   file_dump(string_replace(argv[1], ".lex", ".match.generated.cpp"), prepare_match(rules));

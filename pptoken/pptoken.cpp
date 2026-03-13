@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <regex>
+#include <format>
 
 #include "pp_input.h"
 
@@ -41,6 +42,14 @@ std::vector<PPToken> pp_scan(const std::string &file, const std::string &input) 
   while (iter != end) {
     auto kind = PPToken::kInvalid;
 #include "pptoken.match.generated.cpp"
+    if (match.length() == 0) {
+      throw std::runtime_error(
+        std::format(
+          "Zero-length token match (kind={}) at {}:{}:{}",
+          static_cast<int>(kind), locus.file, locus.row, locus.column
+        )
+      );
+    }
     result.emplace_back(locus, kind, match.str(0));
 
     iter += match.length();

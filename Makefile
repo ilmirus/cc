@@ -21,20 +21,17 @@ lex/lex: lex/lex.cpp \
 		utils/file_utils.cpp \
 		utils/string_utils.cpp
 
-pptoken/pptoken.enum.generated.cpp: lex/lex pptoken/pptoken.lex
+pptoken/.generated.stamp: lex/lex pptoken/pptoken.lex
 	lex/lex pptoken/pptoken.lex
+	touch pptoken/.generated.stamp
 
-pptoken/pptoken.regex.generated.cpp: lex/lex pptoken/pptoken.lex
-	lex/lex pptoken/pptoken.lex
-
-pptoken/pptoken.match.generated.cpp: lex/lex pptoken/pptoken.lex
-	lex/lex pptoken/pptoken.lex
-
-pptoken/pptoken.begin.generated.cpp: lex/lex pptoken/pptoken.lex
-	lex/lex pptoken/pptoken.lex
+pptoken/pptoken.enum.generated.cpp \
+pptoken/pptoken.regex.generated.cpp \
+pptoken/pptoken.match.generated.cpp \
+pptoken/pptoken.begin.generated.cpp: pptoken/.generated.stamp
 
 clean:
-	rm pptoken/pp_test *pptoken/generated.cpp lex/lex
+	rm -f pptoken/pp_test pptoken/*.generated.cpp pptoken/.generated.stamp lex/lex
 
 test: pptoken/pp_test
 	./pptoken/pp_test

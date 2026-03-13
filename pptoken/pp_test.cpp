@@ -223,16 +223,17 @@ void pp_test() {
   for (auto &test: tests) {
     std::cout << "Running " << test << "...";
 
-    auto input = slurp("tests/" + test + ".c");
-    auto expected = slurp_lines("tests/" + test + ".ref");
+    auto input = slurp("pptoken/tests/" + test + ".c");
+    auto expected = slurp_lines("pptoken/tests/" + test + ".ref");
     std::vector<PPToken> got;
     try {
       got = pp_scan(test, input);
     } catch ([[maybe_unused]] const std::runtime_error &ex) {
-      if (expected[0].starts_with("ERROR")) {
+      if (!expected.empty() && expected[0].starts_with("ERROR")) {
         std::cout << " OK\n";
         continue;
       }
+      throw;
     }
 
     for (size_t i = 0; i < std::min(got.size(), expected.size()); i++) {
