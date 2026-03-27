@@ -1,5 +1,5 @@
-#include "../utils/file_utils.h"
-#include "../utils/string_utils.h"
+#include "utils/file_utils.h"
+#include "utils/string_utils.h"
 #include <iostream>
 #include <sstream>
 #include <cassert>

@@ -8,7 +8,7 @@
 struct PPToken {
   Locus locus;
 
-  enum {
+  enum Kind {
 #include "pptoken.enum.generated.cpp"
   } kind;
 
