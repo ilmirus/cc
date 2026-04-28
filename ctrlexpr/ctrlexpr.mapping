@@ -1,0 +1,3 @@
+`pp_number` if (token.kind == PPToken::kPPNumber)
+`char_literal` if (token.kind == PPToken::kCharacterConstant)
+`identifier` if (token.kind == PPToken::kIdentifier)

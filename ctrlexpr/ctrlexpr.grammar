@@ -1,0 +1,30 @@
+primary = pp_number | char_literal | identifier | NAN
+
+pp_number = `pp_number` ~ i:integer us:unsigned_suffix? { us.empty() ? CtrlExpr { CtrlExpr::kSigned, i } : CtrlExpr { CtrlExpr::kUnsigned, i } }
+
+integer = hex_integer | oct_integer | dec_integer
+
+hex_integer = 0 (x | X) hex_digit+
+oct_integer = 0 oct_digit+
+dec_integer = dec_digit+
+
+unsigned_suffix = u l? l?
+                | U l? l?
+                | u L? L?
+                | U L? L?
+                | l l? u
+                | l l? U
+                | L L? u
+                | L L? U
+
+hex_prefix = 0 (x | X)
+
+hex_digit = [0-9a-fA-F]
+oct_digit = [0-7]
+dec_digit = [0-9]
+
+char_literal = `char_literal` ~ L? ' c:[^'] ' { CtrlExpr { CtrlExpr::kSigned, code_point(c) } }
+
+identifier = `identifier` ~ { CtrlExpr::kSigned, defined(it) }
+
+NAN = . { CtrlExpr { CtrlExpr::kError, 0 }; }

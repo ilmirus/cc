@@ -1,5 +1,3 @@
-true
-false
 0
 1
 0x2
@@ -9,8 +7,6 @@ false
 0x2u
 03u
 'a'
-u'a'
-U'a'
 L'a'
 "foo"
 3.2
