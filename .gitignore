@@ -1,6 +1,8 @@
 lex/lex
+gnm/gnm
 **/*.dSYM/
 **/.generated.stamp
 .idea
 pptoken/pp_test
 ctrlexpr/test
+compile_commands.json

@@ -1,9 +1,7 @@
 #include "string_utils.h"
-#include <iostream>
 #include <sstream>
 #include <algorithm>
 #include <cctype>
-#include <ranges>
 
 std::string join_lines(const std::vector<std::string> &strings) {
   std::string result;
