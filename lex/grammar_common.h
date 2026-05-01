@@ -1,9 +1,13 @@
 #pragma once
+#include <cctype>
 #include <string>
 
 struct Input {
   std::string raw;
   int offset;
+  bool is_line_start;
+
+  Input(const std::string& raw): raw(raw), offset(0), is_line_start(true) {}
 
   [[nodiscard]] char peek(int i = 0) const {
     if (offset + i >= raw.size())
@@ -12,20 +16,24 @@ struct Input {
   }
 
   void skip(int i = 1) {
-    offset += i;
+    for (int ii = 0; ii < i; ii++) {
+      if (ii == raw.size()) break;
+      if (raw[ii] == '\n') is_line_start = true;
+      if (!isspace(raw[ii])) is_line_start = false;
+      offset++;
+    }
   }
 
-  char next() {
-    skip();
-    return peek();
+  void skip_ws() {
+    while (std::isblank(peek())) {
+      skip();
+    }
   }
 
   [[nodiscard]] std::string rest() const {
     return raw.substr(offset);
   }
 };
-
-void skip_ws(Input &input);
 
 // identifier = [a-zA-Z_][a-zA-Z0-9_]*
 bool is_identifier_start(char c);

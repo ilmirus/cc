@@ -1,14 +1,9 @@
 #include "grammar_common.h"
 
 #include <iostream>
+#include <sstream>
 
 extern bool trace;
-
-void skip_ws(Input &input) {
-  while (input.peek() == ' ') {
-    input.skip();
-  }
-}
 
 bool is_identifier_start(char c) {
   return isalpha(c) || c == '_';
@@ -26,10 +21,9 @@ std::string parse_identifier(Input &input) {
     throw std::runtime_error("Expected identifier, got: " + input.rest());
   }
   std::string result;
-  char c = input.peek();
-  while (is_identifier(c)) {
-    result += c;
-    c = input.next();
+  while (is_identifier(input.peek())) {
+    result += input.peek();
+    input.skip();
   }
   return result;
 }
@@ -43,7 +37,8 @@ std::string parse_action(Input &input, const std::string &name) {
   }
   std::stringstream result;
   result << '{';
-  char c = input.next();
+  input.skip();
+  char c = input.peek();
   while (c != '}') {
     switch (c) {
       case '{':

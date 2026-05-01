@@ -9,6 +9,7 @@
 #include <set>
 #include <cctype>
 #include <ranges>
+#include <algorithm>
 
 // program = (rule | new-line)*
 // rule = identifier \s* '=' \s* pattern (\s '{' action '}')? new-line
@@ -46,7 +47,8 @@ std::string parse_pattern_char(Input &input, const std::string &rule_name) {
   std::string result;
   result += c;
   if (c == '\\') {
-    c = input.next();
+    input.skip();
+    c = input.peek();
     if (c == 0)
       throw std::runtime_error("Unclosed escape in " + rule_name);
     result += c;
@@ -66,7 +68,8 @@ std::string parse_grouping(Input &input, const std::string &rule_name, char begi
   }
   std::stringstream result;
   result << begin;
-  char c = input.next();
+  input.skip();
+  char c = input.peek();
   do {
     switch (c) {
       case 0:
@@ -116,7 +119,7 @@ std::string parse_pattern(Input &input, const std::string &rule_name) {
     }
     c = input.peek();
   }
-  skip_ws(input);
+  input.skip_ws();
   return string_trim(result.str());
 }
 
@@ -125,18 +128,18 @@ Rule parse_rule_after_name(Input &input, const std::string &name, bool is_inline
 
   if (input.peek() == 'i' && input.peek(1) == 'f' && !is_identifier(input.peek(2))) {
     input.skip(2);
-    skip_ws(input);
+    input.skip_ws();
     if (input.peek() != '(') throw std::runtime_error("Expected '(' after 'if' in " + name);
     condition = parse_grouping(input, name, '(', ')');
-    skip_ws(input);
+    input.skip_ws();
   }
 
   if (input.peek() != '=') throw std::runtime_error("Expected '=' in rule " + name);
   input.skip();
-  skip_ws(input);
+  input.skip_ws();
 
   auto pattern = parse_pattern(input, name);
-  skip_ws(input);
+  input.skip_ws();
 
   std::string action;
   if (input.peek() == '{') action = parse_action(input, name);
@@ -151,7 +154,7 @@ Rule parse_rule(Input &input) {
   auto name = parse_identifier(input);
   bool is_inline = (name == "inline");
   if (is_inline) {
-    skip_ws(input);
+    input.skip_ws();
     name = parse_identifier(input);
   }
   return parse_rule_after_name(input, name, is_inline);
@@ -163,7 +166,7 @@ std::vector<Rule> parse(Input &input) {
 
   std::vector<Rule> result;
   while (input.peek() != 0) {
-    skip_ws(input);
+    input.skip_ws();
     if (input.peek() == '\n') {
       input.skip();
       continue;
@@ -171,7 +174,7 @@ std::vector<Rule> parse(Input &input) {
     if (input.peek() == 0) break;
 
     auto name = parse_identifier(input);
-    skip_ws(input);
+    input.skip_ws();
 
     if (name == "BEGIN" || name == "BEFORE" || name == "AFTER") {
       auto action = parse_action(input, name);
@@ -182,15 +185,15 @@ std::vector<Rule> parse(Input &input) {
       bool is_inline = (name == "inline");
       if (is_inline) {
         name = parse_identifier(input);
-        skip_ws(input);
+        input.skip_ws();
       }
       result.push_back(parse_rule_after_name(input, name, is_inline));
     }
 
-    skip_ws(input);
+    input.skip_ws();
     while (input.peek() == '\n') {
       input.skip();
-      skip_ws(input);
+      input.skip_ws();
     }
   }
   return result;
@@ -401,24 +404,25 @@ std::string prepare_regex(const std::vector<Rule> &rules) {
     }
     std::stringstream pattern;
     pattern << '^';
-    auto input = Input{rule.pattern, 0};
+    auto input = Input(rule.pattern);
     while (input.peek() != 0) {
-      char c = input.peek();
-      switch (c) {
+      switch (input.peek()) {
         case '\\':
-          pattern << c;
-          pattern << input.next();
+          pattern << '\\';
+          pattern << input.peek(1);
+          input.skip(2);
           break;
         case '(':
-          pattern << c;
-          if (input.peek(1) != '?') {
+          pattern << '(';
+          input.skip();
+          if (input.peek() != '?') {
             pattern << "?:";
           }
           break;
         default:
-          pattern << c;
+          pattern << input.peek();
+          input.skip();
       }
-      input.skip();
     }
     const auto patternContent = pattern.str();
     const auto delimiter = choose_raw_string_delimiter(patternContent);
@@ -507,7 +511,7 @@ int main(int argc, char **argv) {
   if (argc < 2)
     throw std::runtime_error("expecting filename as argument");
   auto raw = slurp(argv[1]);
-  auto input = Input{raw, 0};
+  auto input = Input(raw);
   auto rules = parse(input);
   analyze_and_inline(rules);
   const auto it = std::find_if(rules.begin(), rules.end(), [](const Rule &rule) {
