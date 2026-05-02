@@ -25,6 +25,6 @@ dec_digit = [0-9]
 
 char_literal = `char_literal` ~ L? ' c:[^'] ' { CtrlExpr { CtrlExpr::kSigned, code_point(c) } }
 
-identifier = `identifier` ~ { CtrlExpr::kSigned, defined(it) }
+identifier = `identifier` ~ { CtrlExpr { CtrlExpr::kSigned, defined(it) } }
 
 NAN = . { CtrlExpr { CtrlExpr::kError, 0 }; }
