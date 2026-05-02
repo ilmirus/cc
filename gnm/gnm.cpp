@@ -15,11 +15,12 @@ using namespace std::string_literals;
 // rule_start = ^ name \=
 // name = identifier | mapping_name
 // expression = sequence (\| sequence)*
-// sequence = match*
-// match = !rule_start (identifier :)? primary (\? | \* | \+)?
+// sequence = (!rule_start match)*
+// match = (identifier :)? primary primary_suffix
 // primary = name
 //         | \.
 //         | \( expression \)
+// primary_suffix = (\? | \* | \+)?
 // action = { [^}]+ }
 // mapping_name = ` [^`]+ `
 
@@ -93,14 +94,65 @@ Name parse_name(Input& input) {
   else throw std::runtime_error("Expected identifier or mapping name, but got " + input.rest());
 }
 
-Primary parse_primary(Input& input) {}
+bool is_name_start(Input& input) {
+  return is_identifier_start(input.peek()) || input.peek() == '`';
+}
 
-// sequence = ((identifier :)? primary (\? | \* | \+)?)*
-Sequence parse_sequence(Input& input) {
-  std::string binding;
+Expression parse_expression(Input& input);
+
+// primary = name
+//         | \.
+//         | \( expression \)
+// primary_suffix = (\? | \* | \+)?
+Primary parse_primary(Input& input) {
+  Primary result;
+
+  input.skip_ws();
+  if (is_name_start(input)) {
+    result.value = parse_name(input);
+  } else if (input.peek() == '.') {
+    input.skip();
+    result.value = Dot();
+  } else if (input.peek() == '(') {
+    input.skip();
+    input.skip_ws();
+    auto expr = parse_expression(input);
+    input.skip_ws();
+    if (input.peek() != ')') throw std::runtime_error("Expected ')' at the end of grouping: " + input.rest());
+    input.skip();
+    result.value = expr;
+  } else {
+    throw std::runtime_error("Exprected primary: " + input.rest());
+  }
+
+  input.skip_ws();
+  switch (input.peek()) {
+    case '?':
+      result.suffix = Primary::kZeroOrOne;
+      input.skip();
+      break;
+    case '*':
+      result.suffix = Primary::kZeroOrMore;
+      input.skip();
+      break;
+    case '+':
+      result.suffix = Primary::kOneOrMore;
+      input.skip();
+      break;
+    default:
+      result.suffix = Primary::kNone;
+  }
+  return result;
+}
+
+// match = (identifier :)? primary (\? | \* | \+)?
+Match parse_match(Input& input) {
+  Match result;
+
+  input.skip_ws();
   if (is_identifier_start(input.peek())) {
     auto safepoint = input;
-    binding = parse_identifier(input);
+    result.binding = parse_identifier(input);
     input.skip_ws();
     if (input.peek() == ':') {
       input.skip();
@@ -110,26 +162,40 @@ Sequence parse_sequence(Input& input) {
     }
   }
 
-  parse_primary(input);
-  input.skip_ws();
-  Primary::Suffix suffix;
-  switch (input.peek()) {
-    case '?':
-      suffix = Primary::kZeroOrOne;
-      input.skip();
-      break;
-    case '*':
-      suffix = Primary::kZeroOrMore;
-      input.skip();
-      break;
-    case '+':
-      suffix = Primary::kOneOrMore;
-      input.skip();
-      break;
-    default:
-      suffix = Primary::kNone;
-  }
+  result.primary = parse_primary(input);
+  return result;
+}
 
+std::optional<Name> parse_rule_start_safe(Input& input) {
+  auto safepoint = input;
+  input.skip_ws();
+  if (!input.is_line_start) {
+    input = safepoint;
+    return {};
+  }
+  if (!is_name_start(input)) {
+    input = safepoint;
+    return {};
+  }
+  auto name = parse_name(input);
+  input.skip_ws();
+  if (input.peek() != '=') {
+    input = safepoint;
+    return {};
+  }
+  input.skip();
+
+  return name;
+}
+
+// sequence = (!rule_start match)*
+Sequence parse_sequence(Input& input) {
+  Sequence result;
+  while (true) {
+    auto rule_start = parse_rule_start_safe(input);
+    if (rule_start.has_value()) return result;
+    result.emplace_back(parse_match(input));
+  }
 }
 
 // expression = sequence (\| sequence)*
@@ -146,9 +212,11 @@ Expression parse_expression(Input& input) {
   return result;
 }
 
-// rule = name \= (expression action?) | (mapping_name ~ expression? action)
+// rule = rule_start (expression action?) | (mapping_name ~ expression? action)
 Rule parse_rule(Input& input) {
-  auto name = parse_name(input);
+  auto rule_start = parse_rule_start_safe(input);
+  if (!rule_start.has_value()) throw std::runtime_error("Expected rule start: " + input.rest());
+  auto name = rule_start.value();
 
   input.skip_ws();
   if (input.peek() != '=') throw std::runtime_error("Expected '=' a"s);

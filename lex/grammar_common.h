@@ -1,5 +1,6 @@
 #pragma once
 #include <cctype>
+#include <iostream>
 #include <string>
 
 struct Input {
@@ -17,15 +18,15 @@ struct Input {
 
   void skip(int i = 1) {
     for (int ii = 0; ii < i; ii++) {
-      if (ii == raw.size()) break;
-      if (raw[ii] == '\n') is_line_start = true;
-      if (!isspace(raw[ii])) is_line_start = false;
+      if (offset >= raw.size()) break;
+      if (raw[offset + ii] == '\n') is_line_start = true;
+      if (!isspace(raw[offset + ii])) is_line_start = false;
       offset++;
     }
   }
 
   void skip_ws() {
-    while (std::isblank(peek())) {
+    while (std::isspace(peek())) {
       skip();
     }
   }

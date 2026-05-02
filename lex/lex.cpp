@@ -10,9 +10,10 @@
 #include <cctype>
 #include <ranges>
 #include <algorithm>
+#include <stdexcept>
 
-// program = (rule | new-line)*
-// rule = identifier \s* '=' \s* pattern (\s '{' action '}')? new-line
+// program = rule*
+// rule = ^ identifier \s* '=' \s* pattern (\s '{' action '}')?
 // identifier = ...
 // pattern = (grouping | [^\s\n])*
 // grouping = parens | square
@@ -167,11 +168,9 @@ std::vector<Rule> parse(Input &input) {
   std::vector<Rule> result;
   while (input.peek() != 0) {
     input.skip_ws();
-    if (input.peek() == '\n') {
-      input.skip();
-      continue;
-    }
     if (input.peek() == 0) break;
+
+    if (!input.is_line_start) throw std::runtime_error("Rule should start from new line " + input.rest());
 
     auto name = parse_identifier(input);
     input.skip_ws();
@@ -191,10 +190,6 @@ std::vector<Rule> parse(Input &input) {
     }
 
     input.skip_ws();
-    while (input.peek() == '\n') {
-      input.skip();
-      input.skip_ws();
-    }
   }
   return result;
 }
