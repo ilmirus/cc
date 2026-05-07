@@ -1,10 +1,13 @@
+#include <map>
 #include <optional>
+#include <set>
 #include <stdexcept>
+#include <string>
 #include <variant>
 #include <vector>
-#include <string>
 
 #include "lex/grammar_common.h"
+#include "utils/file_utils.h"
 
 using namespace std::string_literals;
 
@@ -15,43 +18,69 @@ using namespace std::string_literals;
 // rule_start = ^ name \=
 // name = identifier | mapping_name
 // expression = sequence (\| sequence)*
-// sequence = (!rule_start match)*
+// sequence = (!sequence_terminator match)*
+// sequence_terminator = rule_start | \| | \{ | \)
 // match = (identifier :)? primary primary_suffix
 // primary = name
 //         | \.
 //         | \( expression \)
+//         | number
+//         | square
+//         | escaped_char
 // primary_suffix = (\? | \* | \+)?
 // action = { [^}]+ }
 // mapping_name = ` [^`]+ `
+// number = [0-9]+
+// square = \[ \^? square_item* \]
+// square_item = square_range
+//            | square_char
+//            | -
+// square_range = square_char - square_char
+// square_char = escaped_char | [^\]\\\\n-]
+// escaped_char = \\ . | .
 
 bool trace = false;
 
 struct Match;
 using Sequence = std::vector<Match>;
 using Expression = std::vector<Sequence>;
+struct Rule;
 
 struct Name {
   std::string value;
-  bool is_mapping;
+  bool is_mapping = false;
+  const Rule* rule = nullptr;
+
+  auto operator<=>(const Name& other) const {
+    return value<=>other.value;
+  }
 };
 
 struct Dot {};
+
+struct Square {
+  bool negation = false;
+  std::vector<std::pair<char, char>> ranges;
+};
 
 struct Primary {
   enum Kind {
     kName,
     kDot,
-    kGrouping
+    kGrouping,
+    kNumber,
+    kSquare,
+    kChar
   };
 
-  std::variant<Name, Dot, Expression> value;
+  std::variant<Name, Dot, Expression, std::string, Square, char> value;
 
   enum Suffix {
     kNone,
     kZeroOrOne,
     kZeroOrMore,
     kOneOrMore
-  } suffix;
+  } suffix = kNone;
 };
 
 struct Match {
@@ -60,14 +89,14 @@ struct Match {
 };
 
 struct Rule {
+  Name name;
   std::optional<Expression> expr;
-  std::string mapping_name;
-  bool is_payload_unpack;
+  std::optional<Name> mapping_name;
   std::string action;
 };
 
 // mapping_name = ` [^`]+ `
-std::string parse_mapping_name(Input& input) {
+Name parse_mapping_name(Input& input) {
   if (input.peek() != '`') throw std::logic_error("Expected `, but got "s + input.peek() + " mapping name");
   std::string result;
   result += input.peek();
@@ -84,14 +113,14 @@ std::string parse_mapping_name(Input& input) {
   }
   result += input.peek();
   input.skip();
-  return result;
+  return Name { result, true };
 }
 
 Name parse_name(Input& input) {
   input.skip_ws();
   if (is_identifier(input.peek())) return Name { parse_identifier(input), false };
-  else if (input.peek() == '`') return Name { parse_mapping_name(input), true };
-  else throw std::runtime_error("Expected identifier or mapping name, but got " + input.rest());
+  if (input.peek() == '`') return parse_mapping_name(input);
+  throw std::runtime_error("Expected identifier or mapping name, but got " + input.rest());
 }
 
 bool is_name_start(Input& input) {
@@ -100,10 +129,73 @@ bool is_name_start(Input& input) {
 
 Expression parse_expression(Input& input);
 
+// TODO: Support \d \s \w, control escapes, hex escapes, unicode escapes
+char unescape(char c) {
+  switch (c) {
+    case 'n': return '\n';
+    case 'r': return '\r';
+    case 't': return '\t';
+    default: return c;
+  }
+}
+
+// escaped_char = \\ . | .
+char parse_escaped_char(Input& input) {
+  if (input.peek() == '\\') {
+    input.skip();
+    auto result = unescape(input.peek());
+    input.skip();
+    return result;
+  }
+
+  auto result = input.peek();
+  input.skip();
+  return result;
+}
+
+// square = \[ \^? square_item* \]
+// square_item = square_range
+//            | square_char
+//            | -
+// square_range = square_char - square_char
+// square_char = escaped_char | [^\]\\\\n-]
+Square parse_square(Input& input) {
+  if (input.peek() != '[')
+    throw std::logic_error("Expected [ at the square start " + input.rest());
+  input.skip();
+  Square result;
+  if (input.peek() == '^') {
+    input.skip();
+    result.negation = true;
+  } else {
+    result.negation = false;
+  }
+
+  while (input.peek() != ']' && input.peek() != '\n') {
+    auto start = parse_escaped_char(input);
+    if (input.peek() == '-') {
+      input.skip();
+      auto end = parse_escaped_char(input);
+      result.ranges.emplace_back(start, end);
+    } else {
+      result.ranges.emplace_back(start, 0);
+    }
+  }
+
+  if (input.peek() != ']') throw std::runtime_error("Unclosed square " + input.rest());
+  input.skip();
+
+  return result;
+}
+
 // primary = name
 //         | \.
 //         | \( expression \)
+//         | number
+//         | square
+//         | escaped_char
 // primary_suffix = (\? | \* | \+)?
+// number = [0-9]+
 Primary parse_primary(Input& input) {
   Primary result;
 
@@ -121,8 +213,17 @@ Primary parse_primary(Input& input) {
     if (input.peek() != ')') throw std::runtime_error("Expected ')' at the end of grouping: " + input.rest());
     input.skip();
     result.value = expr;
+  } else if (isdigit(input.peek())) {
+    std::string number;
+    while (isdigit(input.peek())) {
+      number += input.peek();
+      input.skip();
+    }
+    result.value = number;
+  } else if (input.peek() == '[') {
+    result.value = parse_square(input);
   } else {
-    throw std::runtime_error("Exprected primary: " + input.rest());
+    result.value = parse_escaped_char(input);
   }
 
   input.skip_ws();
@@ -158,6 +259,7 @@ Match parse_match(Input& input) {
       input.skip();
       input.skip_ws();
     } else {
+      result.binding.clear();
       input = safepoint;
     }
   }
@@ -188,12 +290,19 @@ std::optional<Name> parse_rule_start_safe(Input& input) {
   return name;
 }
 
-// sequence = (!rule_start match)*
+// sequence = (!sequence_terminator match)*
+// sequence_terminator = rule_start | \| | \{ | \)
 Sequence parse_sequence(Input& input) {
   Sequence result;
   while (true) {
+    auto safepoint = input;
     auto rule_start = parse_rule_start_safe(input);
-    if (rule_start.has_value()) return result;
+    if (rule_start.has_value()) {
+      input = safepoint;
+      return result;
+    }
+    input.skip_ws();
+    if (input.peek() == '|' || input.peek() == '{' || input.peek() == ')') return result;
     result.emplace_back(parse_match(input));
   }
 }
@@ -219,13 +328,10 @@ Rule parse_rule(Input& input) {
   auto name = rule_start.value();
 
   input.skip_ws();
-  if (input.peek() != '=') throw std::runtime_error("Expected '=' a"s);
-
-  input.skip_ws();
   // Parse payload unpack first and then, if no `~` found, parse expression
   if (input.peek() == '`') {
     auto safepoint = input;
-    auto mappint_name = parse_mapping_name(input);
+    auto mapping_name = parse_mapping_name(input);
 
     input.skip_ws();
     if (input.peek() != '~') {
@@ -245,17 +351,17 @@ Rule parse_rule(Input& input) {
     if (input.peek() == '{') {
       action = parse_action(input, name.value);
     }
-    return Rule { expr, mappint_name, true, action };
+    return Rule { name, expr, mapping_name, action };
   }
 
 EXPRESSION:
-  std::optional<Expression> expr = parse_expression(input);
+  auto expr = parse_expression(input);
   input.skip_ws();
   std::string action;
   if (input.peek() == '{') {
     action = parse_action(input, name.value);
   }
-  return Rule { expr, "", false, action };
+  return Rule { name, expr, {}, action };
 }
 
 std::vector<Rule> parse(Input& input) {
@@ -272,6 +378,151 @@ std::vector<Rule> parse(Input& input) {
   return result;
 }
 
-int main() {
+struct Grammar {
+  std::vector<Name> rules;
+};
 
+Grammar extract_names(std::vector<Rule>& rules) {
+  Grammar result;
+  std::set<std::string> seen;
+  for (Rule& rule: rules) {
+    if (seen.contains(rule.name.value))
+      throw std::runtime_error("Duplicate rule "s + rule.name.value);
+    seen.insert(rule.name.value);
+    rule.name.rule = &rule;
+    result.rules.emplace_back(rule.name);
+  }
+  return result;
+}
+
+std::ostream& operator<<(std::ostream& os, const Name& name) {
+  if (name.rule != nullptr) {
+    os << "<";
+  }
+  os << name.value << "(" << name.is_mapping << ")";
+  if (name.rule != nullptr) {
+    os << ">";
+  }
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const Expression& expression);
+
+std::ostream& operator<<(std::ostream& os, const Square& square) {
+  os << "[";
+  if (square.negation) {
+    os << "^";
+  }
+  for (const auto& [start, end]: square.ranges) {
+    os << start;
+    if (end != 0) {
+      os << "-";
+    }
+    os << end;
+  }
+  os << "]";
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const Primary& primary) {
+  switch (primary.value.index()) {
+    case Primary::kName:
+      os << std::get<Primary::kName>(primary.value);
+      break;
+    case Primary::kDot:
+      os << ".";
+      break;
+    case Primary::kGrouping:
+      os << "(" << std::get<Primary::kGrouping>(primary.value) << ")";
+      break;
+    case Primary::kNumber:
+      os << std::get<Primary::kNumber>(primary.value);
+      break;
+    case Primary::kSquare:
+      os << std::get<Primary::kSquare>(primary.value);
+      break;
+    case Primary::kChar:
+      os << std::get<Primary::kChar>(primary.value);
+      break;
+    default:
+      throw std::logic_error("unreachable");
+  }
+
+  switch (primary.suffix) {
+    case Primary::kNone:
+      break;
+    case Primary::kZeroOrOne:
+      os << "?";
+      break;
+    case Primary::kZeroOrMore:
+      os << "*";
+      break;
+    case Primary::kOneOrMore:
+      os << "+";
+      break;
+  }
+  os << " ";
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const Match& match) {
+  if (!match.binding.empty()) {
+    os << match.binding << ":";
+  }
+  os << match.primary;
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const Sequence& sequence) {
+  for (const auto& match: sequence) {
+    os << match;
+  }
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const Expression& expression) {
+  for (size_t i = 0, first = true; i < expression.size(); i++, first = false) {
+    if (!first) {
+      os << "| ";
+    }
+    os << expression[i];
+  }
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const Rule& rule) {
+  os << rule.name << " = ";
+  if (rule.mapping_name.has_value()) {
+    os << rule.mapping_name.value() << " ~ ";
+    if (rule.expr.has_value()) {
+      os << rule.expr.value();
+    }
+  } else {
+    if (rule.expr.has_value()) {
+      os << rule.expr.value();
+    }
+  }
+  if (!rule.action.empty()) {
+    os << rule.action;
+  }
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const Grammar& grammar) {
+  for (const auto& name: grammar.rules) {
+    os << *name.rule << "\n";
+  }
+  return os;
+}
+
+int main(int argc, char **argv) {
+  if (argc < 2) throw std::runtime_error("Expected grammar name as an argument");
+  auto name = std::string(argv[1]);
+  auto raw_grammar = slurp(name + ".grammar");
+  auto raw_mapping = slurp(name + ".mapping");
+  auto input = Input(raw_grammar);
+  auto parsed_rules = parse(input);
+  auto grammar = extract_names(parsed_rules);
+  std::cout << grammar << "\n";
+  return 0;
 }

@@ -152,7 +152,7 @@ mapping_name = ` [^`]+ `
 mapping
 ```
 mappings = mapping*
-mapping = ^ mapping_name "if" raw-expression (~ identifier action)?
+mapping = ^ mapping_name if raw-expression (~ identifier action)?
 ```
 
 ## Унификация парсеров
