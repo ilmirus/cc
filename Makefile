@@ -36,43 +36,34 @@ ctrlexpr/ctrlexpr.o: ctrlexpr/ctrlexpr.cpp ctrlexpr/ctrlexpr.h
 utils/libutils.a: utils/file_utils.o utils/string_utils.o
 	$(AR) $(ARFLAGS) $@ $^
 
-lex/libgrammar_common.a: lex/grammar_common.o
-	$(AR) $(ARFLAGS) $@ $^
-
-pptoken/libpptoken.a: pptoken/pptoken.o
-	$(AR) $(ARFLAGS) $@ $^
-
-ctrlexpr/libctrlexpr.a: ctrlexpr/ctrlexpr.o
-	$(AR) $(ARFLAGS) $@ $^
-
 # tools
-lex/lex: lex/lex.cpp lex/libgrammar_common.a utils/libutils.a
+lex/lex: lex/lex.cpp lex/grammar_common.o utils/libutils.a
 	$(CXX) -o $@ $(CXXFLAGS) -I lex \
 		lex/lex.cpp \
-		lex/libgrammar_common.a \
+		lex/grammar_common.o \
 		utils/libutils.a
 
-gnm/gnm: gnm/gnm.cpp lex/libgrammar_common.a utils/libutils.a
+gnm/gnm: gnm/gnm.cpp lex/grammar_common.o utils/libutils.a
 	$(CXX) -o $@ $(CXXFLAGS) \
 		gnm/gnm.cpp \
-		lex/libgrammar_common.a \
+		lex/grammar_common.o \
 		utils/libutils.a
 
 # tests
 pptoken/pp_test: pptoken/pp_test.cpp pptoken/pp_test.h \
-                 pptoken/libpptoken.a utils/libutils.a
+                 pptoken/pptoken.o utils/libutils.a
 	$(CXX) -o $@ $(CXXFLAGS) -I pptoken \
 		pptoken/pp_test.cpp \
-		pptoken/libpptoken.a \
+		pptoken/pptoken.o \
 		utils/libutils.a
 
 ctrlexpr/test: ctrlexpr/test.cpp \
-               ctrlexpr/libctrlexpr.a pptoken/libpptoken.a utils/libutils.a \
+               ctrlexpr/ctrlexpr.o pptoken/pptoken.o utils/libutils.a \
                gnm/gnm
 	$(CXX) -o $@ $(CXXFLAGS) -I ctrlexpr \
 		ctrlexpr/test.cpp \
-		ctrlexpr/libctrlexpr.a \
-		pptoken/libpptoken.a \
+		ctrlexpr/ctrlexpr.o \
+		pptoken/pptoken.o \
 		utils/libutils.a
 
 clean:

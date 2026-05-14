@@ -1,5 +1,6 @@
 #include "grammar_common.h"
 
+#include <format>
 #include <iostream>
 #include <sstream>
 
@@ -33,7 +34,7 @@ std::string parse_action(Input &input, const std::string &name) {
     std::cout << "\n====\nparse_action: " << input.rest() << std::endl;
 
   if (input.peek() != '{') {
-    throw std::runtime_error("Expected '{' to start action in " + name);
+    throw std::runtime_error("Expected '{' to start action in " + name + " " + input.rest());
   }
   std::stringstream result;
   result << '{';
@@ -53,6 +54,44 @@ std::string parse_action(Input &input, const std::string &name) {
     c = input.peek();
   }
   result << c;
+  input.skip();
+  return result.str();
+}
+
+std::string parse_grouping(Input &input, const std::string &rule_name, char begin, char end) {
+  if (trace)
+    std::cout << "\n====\nparse_grouping: " << input.rest() << std::endl;
+
+  if (input.peek() != begin) {
+    throw std::runtime_error(
+      std::format("Expected '{}' while parsing grouping in {}: {}", begin, rule_name, input.rest())
+    );
+  }
+  std::stringstream result;
+  result << begin;
+  input.skip();
+  do {
+    switch (input.peek()) {
+      case 0:
+      case '\n':
+        throw std::runtime_error(
+          std::format(
+            "Unclosed grouping {}..{} in {}: {}",
+            begin, end, rule_name, input.rest()
+          )
+        );
+      case '(':
+        result << parse_grouping(input, rule_name, '(', ')');
+        break;
+      case '[':
+        result << parse_grouping(input, rule_name, '[', ']');
+        break;
+      default:
+        result << input.peek();
+        input.skip();
+    }
+  } while (input.peek() != end);
+  result << end;
   input.skip();
   return result.str();
 }

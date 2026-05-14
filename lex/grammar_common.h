@@ -43,3 +43,8 @@ std::string parse_identifier(Input &input);
 
 // action = { (action|[^}])* }
 std::string parse_action(Input &input, const std::string &name);
+
+// grouping = parens | square
+// parens = '(' (grouping | [^)])* ')'
+// square = '[' (grouping | [^\]])* ']'
+std::string parse_grouping(Input &input, const std::string &rule_name, char begin, char end);

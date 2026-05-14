@@ -58,45 +58,6 @@ std::string parse_pattern_char(Input &input, const std::string &rule_name) {
   return result;
 }
 
-std::string parse_grouping(Input &input, const std::string &rule_name, char begin, char end) {
-  if (trace)
-    std::cout << "\n====\nparse_grouping: " << input.rest() << std::endl;
-
-  if (input.peek() != begin) {
-    throw std::runtime_error(
-      std::format("Expected '{}' while parsing grouping in {}", begin, rule_name)
-    );
-  }
-  std::stringstream result;
-  result << begin;
-  input.skip();
-  char c = input.peek();
-  do {
-    switch (c) {
-      case 0:
-      case '\n':
-        throw std::runtime_error(
-          std::format(
-            "Unclosed grouping {}..{} in {}",
-            begin, end, rule_name
-          )
-        );
-      case '(':
-        result << parse_grouping(input, rule_name, '(', ')');
-        break;
-      case '[':
-        result << parse_grouping(input, rule_name, '[', ']');
-        break;
-      default:
-        result << parse_pattern_char(input, rule_name);
-    }
-    c = input.peek();
-  } while (c != end);
-  result << c;
-  input.skip();
-  return result.str();
-}
-
 // pattern = (grouping | [^{\n])*
 // grouping = parens | square
 // parens = '(' (grouping | [^)])* ')'
@@ -161,7 +122,7 @@ Rule parse_rule(Input &input) {
   return parse_rule_after_name(input, name, is_inline);
 }
 
-std::vector<Rule> parse(Input &input) {
+std::vector<Rule> parse_grammar(Input &input) {
   if (trace)
     std::cout << "\n====\nparse: " << input.rest() << std::endl;
 
@@ -507,7 +468,7 @@ int main(int argc, char **argv) {
     throw std::runtime_error("expecting filename as argument");
   auto raw = slurp(argv[1]);
   auto input = Input(raw);
-  auto rules = parse(input);
+  auto rules = parse_grammar(input);
   analyze_and_inline(rules);
   const auto it = std::find_if(rules.begin(), rules.end(), [](const Rule &rule) {
     return !rule.is_inline && !rule.pattern.empty();
