@@ -1,9 +1,6 @@
 CXX := g++
 CXXFLAGS := -std=c++20 -Wno-narrowing -g -I .
 
-AR := ar
-ARFLAGS := rcs
-
 all: pptoken/pp_test ctrlexpr/test
 
 # generated pptoken files
@@ -29,7 +26,7 @@ pptoken/pptoken.o: pptoken/pptoken.cpp pptoken/pptoken.h \
                    pptoken/pptoken.begin.generated.cpp
 	$(CXX) -c -o $@ $(CXXFLAGS) -I pptoken pptoken/pptoken.cpp
 
-ctrlexpr/ctrlexpr.o: ctrlexpr/ctrlexpr.cpp ctrlexpr/ctrlexpr.h
+ctrlexpr/ctrlexpr.o: ctrlexpr/ctrlexpr.cpp ctrlexpr/ctrlexpr.h pptoken/pptoken.enum.generated.cpp
 	$(CXX) -c -o $@ $(CXXFLAGS) -I ctrlexpr ctrlexpr/ctrlexpr.cpp
 
 utils/libutils.o: utils/file_utils.o utils/string_utils.o
