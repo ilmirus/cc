@@ -88,11 +88,26 @@ struct Match {
   Primary primary;
 };
 
+struct PayloadUnpack {
+  Name mapping_name;
+  std::optional<Expression> expr;
+  std::string action;
+};
+
+struct AlternativeExpression {
+  Expression expr;
+  std::string action;
+};
+
 struct Rule {
   Name name;
-  std::optional<Expression> expr;
-  std::optional<Name> mapping_name;
-  std::string action;
+  enum Kind {
+    kAlternativeExpression,
+    kPayloadUnpack,
+    kMapping
+  } kind;
+
+  std::variant<PayloadUnpack, AlternativeExpression> value;
 };
 
 // mapping_name = ` [^`]+ `
@@ -321,6 +336,43 @@ Expression parse_expression(Input& input) {
   return result;
 }
 
+std::optional<PayloadUnpack> parse_payload_unpack(Input& input, const Name& name) {
+  if (input.peek() != '`') throw std::runtime_error("Payload unpack should start by mapping name " + input.rest());
+
+  auto safepoint = input;
+  auto mapping_name = parse_mapping_name(input);
+
+  input.skip_ws();
+  if (input.peek() != '~') {
+    input = safepoint;
+    return {};
+  }
+  input.skip();
+  input.skip_ws();
+  std::optional<Expression> expr;
+  if (input.peek() != '{') {
+    expr.emplace(parse_expression(input));
+  }
+
+  input.skip_ws();
+  std::string action;
+  if (input.peek() == '{') {
+    action = parse_action(input, name.value);
+  }
+
+  return PayloadUnpack { mapping_name, expr, action };
+}
+
+AlternativeExpression parse_alternative_expression(Input& input, const Name& name) {
+  auto expr = parse_expression(input);
+  input.skip_ws();
+  std::string action;
+  if (input.peek() == '{') {
+    action = parse_action(input, name.value);
+  }
+  return AlternativeExpression { expr, action };
+}
+
 // rule = rule_start (expression action?) | (mapping_name ~ expression? action)
 Rule parse_rule(Input& input) {
   auto rule_start = parse_rule_start_safe(input);
@@ -330,38 +382,13 @@ Rule parse_rule(Input& input) {
   input.skip_ws();
   // Parse payload unpack first and then, if no `~` found, parse expression
   if (input.peek() == '`') {
-    auto safepoint = input;
-    auto mapping_name = parse_mapping_name(input);
-
-    input.skip_ws();
-    if (input.peek() != '~') {
-      input = safepoint;
-      goto EXPRESSION;
+    auto payload_unpack = parse_payload_unpack(input, name);
+    if (payload_unpack.has_value()) {
+      return Rule { name, Rule::kPayloadUnpack, payload_unpack.value() };
     }
-    input.skip();
-
-    input.skip_ws();
-    std::optional<Expression> expr;
-    if (input.peek() != '{') {
-      expr.emplace(parse_expression(input));
-    }
-
-    input.skip_ws();
-    std::string action;
-    if (input.peek() == '{') {
-      action = parse_action(input, name.value);
-    }
-    return Rule { name, expr, mapping_name, action };
   }
 
-EXPRESSION:
-  auto expr = parse_expression(input);
-  input.skip_ws();
-  std::string action;
-  if (input.peek() == '{') {
-    action = parse_action(input, name.value);
-  }
-  return Rule { name, expr, {}, action };
+  return Rule { name, Rule::kAlternativeExpression, parse_alternative_expression(input, name) };
 }
 
 std::vector<Rule> parse(Input& input) {
@@ -490,20 +517,33 @@ std::ostream& operator<<(std::ostream& os, const Expression& expression) {
   return os;
 }
 
+std::ostream& operator<<(std::ostream& os, const AlternativeExpression& expr) {
+  os << expr.expr << " " << expr.action;
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const PayloadUnpack& pa) {
+  os << pa.mapping_name << " ~ ";
+  if (pa.expr.has_value()) {
+    os << pa.expr.value() << " ";
+  }
+  os << pa.action;
+  return os;
+}
+
 std::ostream& operator<<(std::ostream& os, const Rule& rule) {
   os << rule.name << " = ";
-  if (rule.mapping_name.has_value()) {
-    os << rule.mapping_name.value() << " ~ ";
-    if (rule.expr.has_value()) {
-      os << rule.expr.value();
-    }
-  } else {
-    if (rule.expr.has_value()) {
-      os << rule.expr.value();
-    }
-  }
-  if (!rule.action.empty()) {
-    os << rule.action;
+
+  switch (rule.value.index()) {
+    case Rule::kAlternativeExpression:
+      os << std::get<Rule::kAlternativeExpression>(rule.value);
+      break;
+    case Rule::kPayloadUnpack:
+      os << std::get<Rule::kPayloadUnpack>(rule.value);
+      break;
+    case Rule::kMapping:
+    default:
+      throw std::logic_error("unreachable " + rule.name.value);
   }
   return os;
 }
