@@ -32,39 +32,38 @@ pptoken/pptoken.o: pptoken/pptoken.cpp pptoken/pptoken.h \
 ctrlexpr/ctrlexpr.o: ctrlexpr/ctrlexpr.cpp ctrlexpr/ctrlexpr.h
 	$(CXX) -c -o $@ $(CXXFLAGS) -I ctrlexpr ctrlexpr/ctrlexpr.cpp
 
-# static archives
-utils/libutils.a: utils/file_utils.o utils/string_utils.o
-	$(AR) $(ARFLAGS) $@ $^
+utils/libutils.o: utils/file_utils.o utils/string_utils.o
+	$(CXX) -r -o $@ $^
 
 # tools
-lex/lex: lex/lex.cpp lex/grammar_common.o utils/libutils.a
+lex/lex: lex/lex.cpp lex/grammar_common.o utils/libutils.o
 	$(CXX) -o $@ $(CXXFLAGS) -I lex \
 		lex/lex.cpp \
 		lex/grammar_common.o \
-		utils/libutils.a
+		utils/libutils.o
 
-gnm/gnm: gnm/gnm.cpp lex/grammar_common.o utils/libutils.a
+gnm/gnm: gnm/gnm.cpp lex/grammar_common.o utils/libutils.o
 	$(CXX) -o $@ $(CXXFLAGS) \
 		gnm/gnm.cpp \
 		lex/grammar_common.o \
-		utils/libutils.a
+		utils/libutils.o
 
 # tests
 pptoken/pp_test: pptoken/pp_test.cpp pptoken/pp_test.h \
-                 pptoken/pptoken.o utils/libutils.a
+                 pptoken/pptoken.o utils/libutils.o
 	$(CXX) -o $@ $(CXXFLAGS) -I pptoken \
 		pptoken/pp_test.cpp \
 		pptoken/pptoken.o \
-		utils/libutils.a
+		utils/libutils.o
 
 ctrlexpr/test: ctrlexpr/test.cpp \
-               ctrlexpr/ctrlexpr.o pptoken/pptoken.o utils/libutils.a \
+               ctrlexpr/ctrlexpr.o pptoken/pptoken.o utils/libutils.o \
                gnm/gnm
 	$(CXX) -o $@ $(CXXFLAGS) -I ctrlexpr \
 		ctrlexpr/test.cpp \
 		ctrlexpr/ctrlexpr.o \
 		pptoken/pptoken.o \
-		utils/libutils.a
+		utils/libutils.o
 
 clean:
 	rm -f pptoken/pp_test pptoken/*.generated.cpp pptoken/.generated.stamp \
