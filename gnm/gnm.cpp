@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <map>
 #include <optional>
 #include <set>
@@ -49,10 +50,10 @@ struct Rule;
 struct Name {
   std::string value;
   bool is_mapping = false;
-  const Rule* rule = nullptr;
+  Rule* resolved_to = nullptr;
 
-  auto operator<=>(const Name& other) const {
-    return value<=>other.value;
+  bool operator==(const Name& other) const {
+    return value == other.value;
   }
 };
 
@@ -114,7 +115,7 @@ struct Rule {
     kMapping
   };
 
-  std::variant<PayloadUnpack, AlternativeExpression, Mapping> value;
+  std::variant<AlternativeExpression, PayloadUnpack, Mapping> value;
 };
 
 // mapping_name = ` [^`]+ `
@@ -454,14 +455,14 @@ Grammar extract_names(std::vector<Rule>& rules) {
     if (seen.contains(rule.name.value))
       throw std::runtime_error("Duplicate rule "s + rule.name.value);
     seen.insert(rule.name.value);
-    rule.name.rule = &rule;
+    rule.name.resolved_to = &rule;
     result.rules.emplace_back(rule.name);
   }
   return result;
 }
 
 std::ostream& operator<<(std::ostream& os, const Name& name) {
-  if (name.rule != nullptr) {
+  if (name.resolved_to != nullptr) {
     os << "<" << name.value << ">";
   } else {
     os << name.value;
@@ -598,9 +599,56 @@ std::ostream& operator<<(std::ostream& os, const Rule& rule) {
 
 std::ostream& operator<<(std::ostream& os, const Grammar& grammar) {
   for (const auto& name: grammar.rules) {
-    os << *name.rule << "\n";
+    os << *name.resolved_to << "\n";
   }
   return os;
+}
+
+void resolve(Name* name, const Grammar& grammar) {
+  for (auto &cursor: grammar.rules) {
+    if (cursor == *name) {
+      name->resolved_to = cursor.resolved_to;
+    }
+  }
+}
+
+void resolve(Expression* expression, const Grammar& grammar) {
+  for (auto& sequence: *expression) {
+    for (auto& match: sequence) {
+      switch (match.primary.value.index()) {
+        case Primary::kName:
+          resolve(&std::get<Name>(match.primary.value), grammar);
+          break;
+        case Primary::kGrouping:
+          resolve(&std::get<Expression>(match.primary.value), grammar);
+          break;
+        default:
+          // Nothing to do
+          break;
+      }
+    }
+  }
+}
+
+void resolve(Grammar* grammar) {
+  for (auto& name: grammar->rules) {
+    switch (name.resolved_to->value.index()) {
+      case Rule::kAlternativeExpression:
+        resolve(&std::get<AlternativeExpression>(name.resolved_to->value).expr, *grammar);
+        break;
+      case Rule::kPayloadUnpack: {
+        resolve(&std::get<PayloadUnpack>(name.resolved_to->value).mapping_name, *grammar);
+        auto& expr = std::get<PayloadUnpack>(name.resolved_to->value).expr;
+        if (expr.has_value()) {
+          resolve(&expr.value(), *grammar);
+        }
+        break;
+      }
+      default:
+        // Nothing to do
+        break;
+    }
+  }
 }
 
 int main(int argc, char **argv) {
@@ -614,6 +662,8 @@ int main(int argc, char **argv) {
   auto parsed_mappings = parse_mappings(mappings_input);
   parsed_rules.insert(parsed_rules.end(), parsed_mappings.begin(), parsed_mappings.end());
   auto grammar = extract_names(parsed_rules);
-  std::cout << grammar << "\n";
+  std::cout << "Unresolved:\n"<< grammar << "\n";
+  resolve(&grammar);
+  std::cout << "Resolved:\n"<< grammar << "\n";
   return 0;
 }
