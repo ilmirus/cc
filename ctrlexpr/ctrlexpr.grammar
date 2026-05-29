@@ -17,8 +17,6 @@ unsigned_suffix = u l? l?
                 | L L? u
                 | L L? U
 
-hex_prefix = 0 (x | X)
-
 hex_digit = [0-9a-fA-F]
 oct_digit = [0-7]
 dec_digit = [0-9]

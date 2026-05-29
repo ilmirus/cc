@@ -6,6 +6,19 @@
 
 extern bool trace;
 
+bool Input::starts_with(const std::string &str) {
+  auto safepoint = offset;
+  for (char c: str) {
+    if (peek() != c) {
+      offset = safepoint;
+      return false;
+    }
+    skip();
+  }
+  offset = safepoint;
+  return true;
+}
+
 bool is_identifier_start(char c) {
   return isalpha(c) || c == '_';
 }

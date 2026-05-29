@@ -39,7 +39,7 @@ lex/lex: lex/lex.cpp lex/grammar_common.o utils/libutils.o
 		lex/grammar_common.o \
 		utils/libutils.o
 
-gnm/gnm: gnm/gnm.cpp lex/grammar_common.o utils/libutils.o
+gnm/gnm: gnm/gnm.cpp lex/grammar_common.o utils/libutils.o utils/vector_utils.h
 	$(CXX) -o $@ $(CXXFLAGS) \
 		gnm/gnm.cpp \
 		lex/grammar_common.o \
@@ -77,6 +77,9 @@ test: pptoken/pp_test ctrlexpr/test
 .PHONY: bear
 bear: Makefile
 	bear --output compile_commands.json -- make -B -j$$(nproc)
+
+debug: gnm/gnm
+	gnm/gnm ctrlexpr/ctrlexpr
 
 pptoken/pptoken.enum.generated.cpp \
 pptoken/pptoken.regex.generated.cpp \

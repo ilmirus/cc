@@ -34,6 +34,8 @@ struct Input {
   [[nodiscard]] std::string rest() const {
     return raw.substr(offset);
   }
+
+  bool starts_with(const std::string &str);
 };
 
 // identifier = [a-zA-Z_][a-zA-Z0-9_]*

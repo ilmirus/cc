@@ -1,7 +1,7 @@
 #include <algorithm>
-#include <map>
 #include <optional>
 #include <set>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <variant>
@@ -9,6 +9,7 @@
 
 #include "lex/grammar_common.h"
 #include "utils/file_utils.h"
+#include "utils/vector_utils.h"
 
 using namespace std::string_literals;
 
@@ -49,7 +50,6 @@ struct Rule;
 
 struct Name {
   std::string value;
-  bool is_mapping = false;
   Rule* resolved_to = nullptr;
 
   bool operator==(const Name& other) const {
@@ -95,7 +95,7 @@ struct PayloadUnpack {
   std::string action;
 };
 
-struct AlternativeExpression {
+struct OrExpression {
   Expression expr;
   std::string action;
 };
@@ -108,14 +108,20 @@ struct Mapping {
 
 struct Rule {
   Name name;
+  std::string color;
 
   enum Kind {
-    kAlternativeExpression,
+    kOrExpression,
     kPayloadUnpack,
     kMapping
   };
 
-  std::variant<AlternativeExpression, PayloadUnpack, Mapping> value;
+  std::variant<OrExpression, PayloadUnpack, Mapping> value;
+};
+
+struct Mappings {
+  std::string initial_color;
+  std::vector<Rule> rules;
 };
 
 // mapping_name = ` [^`]+ `
@@ -136,17 +142,17 @@ Name parse_mapping_name(Input& input) {
   }
   result += input.peek();
   input.skip();
-  return Name { result, true };
+  return Name { result };
 }
 
 Name parse_name(Input& input) {
   input.skip_ws();
-  if (is_identifier(input.peek())) return Name { parse_identifier(input), false };
+  if (is_identifier(input.peek())) return Name { parse_identifier(input) };
   if (input.peek() == '`') return parse_mapping_name(input);
   throw std::runtime_error("Expected identifier or mapping name, but got " + input.rest());
 }
 
-bool is_name_start(Input& input) {
+bool is_name_start(const Input& input) {
   return is_identifier_start(input.peek()) || input.peek() == '`';
 }
 
@@ -371,14 +377,14 @@ std::optional<PayloadUnpack> parse_payload_unpack_safe(Input& input, const Name&
   return PayloadUnpack { mapping_name, expr, action };
 }
 
-AlternativeExpression parse_alternative_expression(Input& input, const Name& name) {
+OrExpression parse_alternative_expression(Input& input, const Name& name) {
   auto expr = parse_expression(input);
   input.skip_ws();
   std::string action;
   if (input.peek() == '{') {
     action = parse_action(input, name.value);
   }
-  return AlternativeExpression { expr, action };
+  return OrExpression { expr, action };
 }
 
 // rule = rule_start (expression action?) | (mapping_name ~ expression? action)
@@ -392,11 +398,11 @@ Rule parse_rule(Input& input) {
   if (input.peek() == '`') {
     auto payload_unpack = parse_payload_unpack_safe(input, name);
     if (payload_unpack.has_value()) {
-      return Rule { name, payload_unpack.value() };
+      return Rule { name, "", payload_unpack.value() };
     }
   }
 
-  return Rule { name, parse_alternative_expression(input, name) };
+  return Rule { name, "", parse_alternative_expression(input, name) };
 }
 
 std::vector<Rule> parse_grammar(Input& input) {
@@ -423,7 +429,7 @@ Rule parse_mapping_rule(Input& input) {
 
   input.skip_ws();
   if (input.peek() != '~') {
-    return Rule { name, Mapping { condition, "", "" } };
+    return Rule { name, "", Mapping { condition, "", "" } };
   }
 
   input.skip();
@@ -431,20 +437,41 @@ Rule parse_mapping_rule(Input& input) {
   auto type = parse_identifier(input);
   input.skip_ws();
   auto action = parse_action(input, name.value);
-  return Rule{name, Mapping{condition, type, action}};
+  return Rule{name, "", Mapping{condition, type, action}};
 }
 
-std::vector<Rule> parse_mappings(Input& input) {
+std::string parse_initial_color(Input &input) {
+  if (input.peek() != '%') throw std::logic_error("Expected % at the start of directive " + input.rest());
+  input.skip();
+
+  if (!input.starts_with("input")) throw std::runtime_error("Unknown directive: %" + input.rest());
+  input.skip(5);
+
+  input.skip_ws();
+  if (input.peek() != '=') throw std::runtime_error("Expected '=' after %input directive: " + input.rest());
+  input.skip();
+
+  input.skip_ws();
+  return parse_identifier(input);
+}
+
+Mappings parse_mappings(Input& input) {
   std::vector<Rule> result;
+  std::string initial_color;
   while (true) {
     input.skip_ws();
     if (input.peek() == 0) break;
-    result.emplace_back(parse_mapping_rule(input));
+    if (input.peek() == '%') {
+      initial_color = parse_initial_color(input);
+    } else {
+      result.emplace_back(parse_mapping_rule(input));
+    }
   }
-  return result;
+  return Mappings { initial_color, result };
 }
 
 struct Grammar {
+  std::string initial_color;
   std::vector<Name> rules;
 };
 
@@ -463,7 +490,7 @@ Grammar extract_names(std::vector<Rule>& rules) {
 
 std::ostream& operator<<(std::ostream& os, const Name& name) {
   if (name.resolved_to != nullptr) {
-    os << "<" << name.value << ">";
+    os << "<" << name.value << "(" << name.resolved_to->color << ")>";
   } else {
     os << name.value;
   }
@@ -556,7 +583,7 @@ std::ostream& operator<<(std::ostream& os, const Expression& expression) {
   return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const AlternativeExpression& expr) {
+std::ostream& operator<<(std::ostream& os, const OrExpression& expr) {
   os << expr.expr << " " << expr.action;
   return os;
 }
@@ -582,8 +609,8 @@ std::ostream& operator<<(std::ostream& os, const Rule& rule) {
   os << rule.name;
 
   switch (rule.value.index()) {
-    case Rule::kAlternativeExpression:
-      os << " = " << std::get<Rule::kAlternativeExpression>(rule.value);
+    case Rule::kOrExpression:
+      os << " = " << std::get<Rule::kOrExpression>(rule.value);
       break;
     case Rule::kPayloadUnpack:
       os << " = " << std::get<Rule::kPayloadUnpack>(rule.value);
@@ -614,13 +641,13 @@ void resolve(Name* name, const Grammar& grammar) {
 
 void resolve(Expression* expression, const Grammar& grammar) {
   for (auto& sequence: *expression) {
-    for (auto& match: sequence) {
-      switch (match.primary.value.index()) {
+    for (auto&[_, primary]: sequence) {
+      switch (primary.value.index()) {
         case Primary::kName:
-          resolve(&std::get<Name>(match.primary.value), grammar);
+          resolve(&std::get<Name>(primary.value), grammar);
           break;
         case Primary::kGrouping:
-          resolve(&std::get<Expression>(match.primary.value), grammar);
+          resolve(&std::get<Expression>(primary.value), grammar);
           break;
         default:
           // Nothing to do
@@ -630,17 +657,16 @@ void resolve(Expression* expression, const Grammar& grammar) {
   }
 }
 
-void resolve(Grammar* grammar) {
-  for (auto& name: grammar->rules) {
+void resolve(const Grammar& grammar) {
+  for (auto& name: grammar.rules) {
     switch (name.resolved_to->value.index()) {
-      case Rule::kAlternativeExpression:
-        resolve(&std::get<AlternativeExpression>(name.resolved_to->value).expr, *grammar);
+      case Rule::kOrExpression:
+        resolve(&std::get<OrExpression>(name.resolved_to->value).expr, grammar);
         break;
       case Rule::kPayloadUnpack: {
-        resolve(&std::get<PayloadUnpack>(name.resolved_to->value).mapping_name, *grammar);
-        auto& expr = std::get<PayloadUnpack>(name.resolved_to->value).expr;
-        if (expr.has_value()) {
-          resolve(&expr.value(), *grammar);
+        resolve(&std::get<PayloadUnpack>(name.resolved_to->value).mapping_name, grammar);
+        if (auto& expr = std::get<PayloadUnpack>(name.resolved_to->value).expr; expr.has_value()) {
+          resolve(&expr.value(), grammar);
         }
         break;
       }
@@ -649,6 +675,64 @@ void resolve(Grammar* grammar) {
         break;
     }
   }
+}
+
+void color(Rule *, const std::string&);
+
+void color(Expression *expr, const std::string& new_color) {
+  std::vector<Name *> result;
+  for (auto& seq: *expr) {
+    for (auto&[_, primary]: seq) {
+      switch (primary.value.index()) {
+        case Primary::kName: {
+          auto &name = std::get<Name>(primary.value);
+          if (name.resolved_to != nullptr) {
+            color(name.resolved_to, new_color);
+          }
+          break;
+        }
+        case Primary::kGrouping:
+          color(&std::get<Expression>(primary.value), new_color);
+          break;
+        default:
+          break;
+      }
+    }
+  }
+}
+
+void color(Rule* rule, const std::string& initial_color) {
+  if (!rule->color.empty()) {
+    if (rule->color != initial_color) {
+      std::stringstream ss;
+      ss << "Rule: " << *rule << " already has color different to " << initial_color;
+      throw std::runtime_error(ss.str());
+    }
+    return;
+  }
+  rule->color = initial_color;
+  switch (rule->value.index()) {
+    case Rule::kOrExpression:
+      color(&std::get<Rule::kOrExpression>(rule->value).expr, initial_color);
+      break;
+    case Rule::kPayloadUnpack: {
+      auto &[mapping_name, unpacking, _] = std::get<PayloadUnpack>(rule->value);
+      if (mapping_name.resolved_to != nullptr) {
+        const auto new_color = std::get<Mapping>(mapping_name.resolved_to->value).payload_type;
+        color(mapping_name.resolved_to, new_color);
+        if (unpacking.has_value()) {
+          color(&unpacking.value(), new_color);
+        }
+      }
+    }
+    default:
+      break;
+  }
+}
+
+void color(const Grammar& grammar) {
+  if (grammar.rules.empty()) return;
+  color(grammar.rules[0].resolved_to, grammar.initial_color);
 }
 
 int main(int argc, char **argv) {
@@ -660,10 +744,12 @@ int main(int argc, char **argv) {
   auto parsed_rules = parse_grammar(input);
   auto mappings_input = Input(raw_mapping);
   auto parsed_mappings = parse_mappings(mappings_input);
-  parsed_rules.insert(parsed_rules.end(), parsed_mappings.begin(), parsed_mappings.end());
+  vector_append(parsed_rules, parsed_mappings.rules);
   auto grammar = extract_names(parsed_rules);
+  grammar.initial_color = parsed_mappings.initial_color;
   std::cout << "Unresolved:\n"<< grammar << "\n";
-  resolve(&grammar);
+  resolve(grammar);
+  color(grammar);
   std::cout << "Resolved:\n"<< grammar << "\n";
   return 0;
 }
