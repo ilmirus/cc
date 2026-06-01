@@ -658,14 +658,14 @@ void resolve(Expression* expression, const Grammar& grammar) {
 }
 
 void resolve(const Grammar& grammar) {
-  for (auto& name: grammar.rules) {
-    switch (name.resolved_to->value.index()) {
+  for (const auto&[_, rule]: grammar.rules) {
+    switch (rule->value.index()) {
       case Rule::kOrExpression:
-        resolve(&std::get<OrExpression>(name.resolved_to->value).expr, grammar);
+        resolve(&std::get<OrExpression>(rule->value).expr, grammar);
         break;
       case Rule::kPayloadUnpack: {
-        resolve(&std::get<PayloadUnpack>(name.resolved_to->value).mapping_name, grammar);
-        if (auto& expr = std::get<PayloadUnpack>(name.resolved_to->value).expr; expr.has_value()) {
+        resolve(&std::get<PayloadUnpack>(rule->value).mapping_name, grammar);
+        if (auto& expr = std::get<PayloadUnpack>(rule->value).expr; expr.has_value()) {
           resolve(&expr.value(), grammar);
         }
         break;
@@ -685,9 +685,9 @@ void color(Expression *expr, const std::string& new_color) {
     for (auto&[_, primary]: seq) {
       switch (primary.value.index()) {
         case Primary::kName: {
-          auto &name = std::get<Name>(primary.value);
-          if (name.resolved_to != nullptr) {
-            color(name.resolved_to, new_color);
+          auto &[_, rule] = std::get<Name>(primary.value);
+          if (rule != nullptr) {
+            color(rule, new_color);
           }
           break;
         }
@@ -716,8 +716,7 @@ void color(Rule* rule, const std::string& initial_color) {
       color(&std::get<Rule::kOrExpression>(rule->value).expr, initial_color);
       break;
     case Rule::kPayloadUnpack: {
-      auto &[mapping_name, unpacking, _] = std::get<PayloadUnpack>(rule->value);
-      if (mapping_name.resolved_to != nullptr) {
+      if (auto &[mapping_name, unpacking, _] = std::get<PayloadUnpack>(rule->value); mapping_name.resolved_to != nullptr) {
         const auto new_color = std::get<Mapping>(mapping_name.resolved_to->value).payload_type;
         color(mapping_name.resolved_to, new_color);
         if (unpacking.has_value()) {
@@ -734,6 +733,8 @@ void color(const Grammar& grammar) {
   if (grammar.rules.empty()) return;
   color(grammar.rules[0].resolved_to, grammar.initial_color);
 }
+
+
 
 int main(int argc, char **argv) {
   if (argc < 2) throw std::runtime_error("Expected grammar name as an argument");
