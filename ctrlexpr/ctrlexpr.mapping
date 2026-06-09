@@ -1,5 +1,0 @@
-%input = PPInput
-
-`pp_number` if (token.kind == PPToken::kPPNumber) ~ Input { Input(token.value) }
-`char_literal` if (token.kind == PPToken::kCharacterConstant) ~ Input { Input(token.value) }
-`identifier` if (token.kind == PPToken::kIdentifier) ~ Input { Input(token.value) }

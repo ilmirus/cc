@@ -9,7 +9,6 @@
 
 #include "lex/grammar_common.h"
 #include "utils/file_utils.h"
-#include "utils/vector_utils.h"
 
 using namespace std::string_literals;
 
@@ -388,9 +387,9 @@ OrExpression parse_alternative_expression(Input& input, const Name& name) {
 }
 
 // rule = rule_start (expression action?) | (mapping_name ~ expression? action)
-Rule parse_rule(Input& input) {
+std::optional<Rule> parse_rule_safe(Input& input) {
   auto rule_start = parse_rule_start_safe(input);
-  if (!rule_start.has_value()) throw std::runtime_error("Expected rule start: " + input.rest());
+  if (!rule_start.has_value()) return {};
   auto name = rule_start.value();
 
   input.skip_ws();
@@ -405,14 +404,19 @@ Rule parse_rule(Input& input) {
   return Rule { name, "", parse_alternative_expression(input, name) };
 }
 
-std::vector<Rule> parse_grammar(Input& input) {
-  std::vector<Rule> result;
-  while (true) {
-    input.skip_ws();
-    if (input.peek() == 0) break;
-    result.emplace_back(parse_rule(input));
-  }
-  return result;
+std::string parse_initial_color(Input &input) {
+  if (input.peek() != '%') throw std::logic_error("Expected % at the start of directive " + input.rest());
+  input.skip();
+
+  if (!input.starts_with("input")) throw std::runtime_error("Unknown directive: %" + input.rest());
+  input.skip(5);
+
+  input.skip_ws();
+  if (input.peek() != '=') throw std::runtime_error("Expected '=' after %input directive: " + input.rest());
+  input.skip();
+
+  input.skip_ws();
+  return parse_identifier(input);
 }
 
 // mapping_rule = mapping_name if ([^)+) (~ identifier action)?
@@ -440,19 +444,28 @@ Rule parse_mapping_rule(Input& input) {
   return Rule{name, "", Mapping{condition, type, action}};
 }
 
-std::string parse_initial_color(Input &input) {
-  if (input.peek() != '%') throw std::logic_error("Expected % at the start of directive " + input.rest());
-  input.skip();
+struct Grammar {
+  std::string initial_color;
+  std::vector<Name> names;
+  std::vector<Rule> rules;
+};
 
-  if (!input.starts_with("input")) throw std::runtime_error("Unknown directive: %" + input.rest());
-  input.skip(5);
-
-  input.skip_ws();
-  if (input.peek() != '=') throw std::runtime_error("Expected '=' after %input directive: " + input.rest());
-  input.skip();
-
-  input.skip_ws();
-  return parse_identifier(input);
+Grammar parse_grammar(Input& input) {
+  Grammar result;
+  while (true) {
+    input.skip_ws();
+    if (input.peek() == 0) break;
+    if (input.peek() == '%') {
+      result.initial_color = parse_initial_color(input);
+    } else {
+      if (auto rule = parse_rule_safe(input); rule.has_value()) {
+        result.rules.emplace_back(rule.value());
+      } else {
+        result.rules.emplace_back(parse_mapping_rule(input));
+      }
+    }
+  }
+  return result;
 }
 
 Mappings parse_mappings(Input& input) {
@@ -470,24 +483,6 @@ Mappings parse_mappings(Input& input) {
   return Mappings { initial_color, result };
 }
 
-struct Grammar {
-  std::string initial_color;
-  std::vector<Name> rules;
-};
-
-Grammar extract_names(std::vector<Rule>& rules) {
-  Grammar result;
-  std::set<std::string> seen;
-  for (Rule& rule: rules) {
-    if (seen.contains(rule.name.value))
-      throw std::runtime_error("Duplicate rule "s + rule.name.value);
-    seen.insert(rule.name.value);
-    rule.name.resolved_to = &rule;
-    result.rules.emplace_back(rule.name);
-  }
-  return result;
-}
-
 std::ostream& operator<<(std::ostream& os, const Name& name) {
   if (name.resolved_to != nullptr) {
     os << "<" << name.value << "(" << name.resolved_to->color << ")>";
@@ -495,6 +490,17 @@ std::ostream& operator<<(std::ostream& os, const Name& name) {
     os << name.value;
   }
   return os;
+}
+
+void extract_names(Grammar &grammar) {
+  std::set<std::string> seen;
+  for (auto &rule: grammar.rules) {
+    if (seen.contains(rule.name.value))
+      throw std::runtime_error("Duplicate rule "s + rule.name.value);
+    seen.insert(rule.name.value);
+    rule.name.resolved_to = &rule;
+    grammar.names.emplace_back(rule.name);
+  }
 }
 
 std::ostream& operator<<(std::ostream& os, const Expression& expression);
@@ -625,14 +631,14 @@ std::ostream& operator<<(std::ostream& os, const Rule& rule) {
 }
 
 std::ostream& operator<<(std::ostream& os, const Grammar& grammar) {
-  for (const auto& name: grammar.rules) {
+  for (const auto& name: grammar.names) {
     os << *name.resolved_to << "\n";
   }
   return os;
 }
 
 void resolve(Name* name, const Grammar& grammar) {
-  for (auto &cursor: grammar.rules) {
+  for (auto &cursor: grammar.names) {
     if (cursor == *name) {
       name->resolved_to = cursor.resolved_to;
     }
@@ -658,7 +664,7 @@ void resolve(Expression* expression, const Grammar& grammar) {
 }
 
 void resolve(const Grammar& grammar) {
-  for (const auto&[_, rule]: grammar.rules) {
+  for (const auto&[_, rule]: grammar.names) {
     switch (rule->value.index()) {
       case Rule::kOrExpression:
         resolve(&std::get<OrExpression>(rule->value).expr, grammar);
@@ -730,8 +736,8 @@ void color(Rule* rule, const std::string& initial_color) {
 }
 
 void color(const Grammar& grammar) {
-  if (grammar.rules.empty()) return;
-  color(grammar.rules[0].resolved_to, grammar.initial_color);
+  if (grammar.names.empty()) return;
+  color(grammar.names[0].resolved_to, grammar.initial_color);
 }
 
 
@@ -739,15 +745,10 @@ void color(const Grammar& grammar) {
 int main(int argc, char **argv) {
   if (argc < 2) throw std::runtime_error("Expected grammar name as an argument");
   auto name = std::string(argv[1]);
-  auto raw_grammar = slurp(name + ".grammar");
-  auto raw_mapping = slurp(name + ".mapping");
+  auto raw_grammar = slurp(name);
   auto input = Input(raw_grammar);
-  auto parsed_rules = parse_grammar(input);
-  auto mappings_input = Input(raw_mapping);
-  auto parsed_mappings = parse_mappings(mappings_input);
-  vector_append(parsed_rules, parsed_mappings.rules);
-  auto grammar = extract_names(parsed_rules);
-  grammar.initial_color = parsed_mappings.initial_color;
+  auto grammar = parse_grammar(input);
+  extract_names(grammar);
   std::cout << "Unresolved:\n"<< grammar << "\n";
   resolve(grammar);
   color(grammar);
