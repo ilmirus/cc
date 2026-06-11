@@ -1,11 +1,4 @@
-lex/lex
-gnm/gnm
-**/*.dSYM/
-**/.generated.stamp
-**/*.o
-**/*.a
 .idea
-pptoken/pp_test
-ctrlexpr/test
 compile_commands.json
 .cache
+build/
