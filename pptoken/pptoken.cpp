@@ -29,7 +29,7 @@ static Locus calculate_locus(
 
 std::vector<PPToken> pp_scan(const std::string &file, const std::string &input) {
   const static std::regex patterns[] = {
-#include "pptoken.regex.generated.cpp"
+#include "generated/pptoken/pptoken.regex.cpp"
   };
 
   std::match_results<PPInput::Iterator> match;
@@ -38,11 +38,11 @@ std::vector<PPToken> pp_scan(const std::string &file, const std::string &input) 
   auto iter = pp_input.begin(), end = pp_input.end();
 
   auto locus = Locus{file, 1, 1};
-#include "pptoken.begin.generated.cpp"
+#include "generated/pptoken/pptoken.begin.cpp"
   while (iter != end) {
     auto kind = PPToken::kInvalid;
-#include "pptoken.match.generated.cpp"
-    if (match.length() == 0) {
+#include "generated/pptoken/pptoken.match.cpp"
+    if (match.empty()) {
       throw std::runtime_error(
         std::format(
           "Zero-length token match (kind={}) at {}:{}:{}",

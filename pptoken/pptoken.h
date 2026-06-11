@@ -9,7 +9,7 @@ struct PPToken {
   Locus locus;
 
   enum Kind {
-#include "pptoken.enum.generated.cpp"
+#include "generated/pptoken/pptoken.enum.cpp"
   } kind;
 
   std::string value;

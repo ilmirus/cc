@@ -1,3 +1,5 @@
+%input = PPInput
+
 primary = pp_number | char_literal | identifier | NAN
 
 pp_number = `pp_number` ~ i:integer us:unsigned_suffix? { us.empty() ? CtrlExpr { CtrlExpr::kSigned, i } : CtrlExpr { CtrlExpr::kUnsigned, i } }
@@ -26,8 +28,6 @@ char_literal = `char_literal` ~ L? ' c:[^'] ' { CtrlExpr { CtrlExpr::kSigned, co
 identifier = `identifier` ~ { CtrlExpr { CtrlExpr::kSigned, defined(it) } }
 
 NAN = . { CtrlExpr { CtrlExpr::kError, 0 }; }
-
-%input = PPInput
 
 `pp_number` if (token.kind == PPToken::kPPNumber) ~ Input { Input(token.value) }
 `char_literal` if (token.kind == PPToken::kCharacterConstant) ~ Input { Input(token.value) }

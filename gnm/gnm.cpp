@@ -118,11 +118,6 @@ struct Rule {
   std::variant<OrExpression, PayloadUnpack, Mapping> value;
 };
 
-struct Mappings {
-  std::string initial_color;
-  std::vector<Rule> rules;
-};
-
 // mapping_name = ` [^`]+ `
 Name parse_mapping_name(Input& input) {
   if (input.peek() != '`') throw std::logic_error("Expected `, but got "s + input.peek() + " mapping name");
@@ -466,21 +461,6 @@ Grammar parse_grammar(Input& input) {
     }
   }
   return result;
-}
-
-Mappings parse_mappings(Input& input) {
-  std::vector<Rule> result;
-  std::string initial_color;
-  while (true) {
-    input.skip_ws();
-    if (input.peek() == 0) break;
-    if (input.peek() == '%') {
-      initial_color = parse_initial_color(input);
-    } else {
-      result.emplace_back(parse_mapping_rule(input));
-    }
-  }
-  return Mappings { initial_color, result };
 }
 
 std::ostream& operator<<(std::ostream& os, const Name& name) {

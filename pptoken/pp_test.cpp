@@ -1,5 +1,3 @@
-#include "pp_test.h"
-
 #include <iostream>
 #include <sstream>
 #include <cassert>

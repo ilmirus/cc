@@ -2,13 +2,14 @@
 #include <cctype>
 #include <iostream>
 #include <string>
+#include <utility>
 
 struct Input {
   std::string raw;
   int offset;
   bool is_line_start;
 
-  Input(const std::string& raw): raw(raw), offset(0), is_line_start(true) {}
+  explicit Input(std::string raw): raw(std::move(raw)), offset(0), is_line_start(true) {}
 
   [[nodiscard]] char peek(int i = 0) const {
     if (offset + i >= raw.size())

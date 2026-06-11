@@ -13,10 +13,7 @@ set(GENERATED_PPTOKEN_DIR ${GENERATED_DIR}/pptoken)
 
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
-  ${CMAKE_CURRENT_SOURCE_DIR}/pptoken
-  ${CMAKE_CURRENT_SOURCE_DIR}/ctrlexpr
-  ${CMAKE_CURRENT_SOURCE_DIR}/lex
-  ${GENERATED_PPTOKEN_DIR}
+  ${CMAKE_BINARY_DIR}
 )
 
 add_library(utils
@@ -43,10 +40,10 @@ set_target_properties(gnm PROPERTIES
 )
 
 set(PPTOKEN_GENERATED
-  ${GENERATED_PPTOKEN_DIR}/pptoken.enum.generated.cpp
-  ${GENERATED_PPTOKEN_DIR}/pptoken.regex.generated.cpp
-  ${GENERATED_PPTOKEN_DIR}/pptoken.match.generated.cpp
-  ${GENERATED_PPTOKEN_DIR}/pptoken.begin.generated.cpp
+  ${GENERATED_PPTOKEN_DIR}/pptoken.enum.cpp
+  ${GENERATED_PPTOKEN_DIR}/pptoken.regex.cpp
+  ${GENERATED_PPTOKEN_DIR}/pptoken.match.cpp
+  ${GENERATED_PPTOKEN_DIR}/pptoken.begin.cpp
 )
 
 add_custom_command(

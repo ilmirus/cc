@@ -476,9 +476,9 @@ int main(int argc, char **argv) {
   if (it == rules.end()) {
     throw std::runtime_error("No concrete token rules in lex file: " + std::string(argv[1]));
   }
-  file_dump(string_replace(argv[1], ".lex", ".regex.generated.cpp"), prepare_regex(rules));
-  file_dump(string_replace(argv[1], ".lex", ".enum.generated.cpp"), prepare_enum(rules));
-  file_dump(string_replace(argv[1], ".lex", ".match.generated.cpp"), prepare_match(rules));
-  file_dump(string_replace(argv[1], ".lex", ".begin.generated.cpp"), prepare_begin());
+  file_dump(string_replace(argv[1], ".lex", ".regex.cpp"), prepare_regex(rules));
+  file_dump(string_replace(argv[1], ".lex", ".enum.cpp"), prepare_enum(rules));
+  file_dump(string_replace(argv[1], ".lex", ".match.cpp"), prepare_match(rules));
+  file_dump(string_replace(argv[1], ".lex", ".begin.cpp"), prepare_begin());
   return 0;
 }
