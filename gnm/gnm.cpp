@@ -704,7 +704,7 @@ void color(Rule* rule, const std::string& initial_color) {
     case Rule::kPayloadUnpack: {
       if (auto &[mapping_name, unpacking, _] = std::get<PayloadUnpack>(rule->value); mapping_name.resolved_to != nullptr) {
         const auto new_color = std::get<Mapping>(mapping_name.resolved_to->value).payload_type;
-        color(mapping_name.resolved_to, new_color);
+        color(mapping_name.resolved_to, initial_color);
         if (unpacking.has_value()) {
           color(&unpacking.value(), new_color);
         }
