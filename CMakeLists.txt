@@ -6,7 +6,11 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-add_compile_options(-Wno-narrowing -g)
+if(MSVC)
+  add_compile_options(/wd4838 /Zi)
+else()
+  add_compile_options(-Wno-narrowing -g)
+endif()
 
 set(GENERATED_DIR ${CMAKE_BINARY_DIR}/generated)
 set(GENERATED_PPTOKEN_DIR ${GENERATED_DIR}/pptoken)
