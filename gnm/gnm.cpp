@@ -9,6 +9,7 @@
 
 #include "lex/grammar_common.h"
 #include "utils/file_utils.h"
+#include "ast.h"
 
 using namespace std::string_literals;
 
@@ -42,81 +43,6 @@ using namespace std::string_literals;
 
 bool trace = false;
 
-struct Match;
-using Sequence = std::vector<Match>;
-using Expression = std::vector<Sequence>;
-struct Rule;
-
-struct Name {
-  std::string value;
-  Rule* resolved_to = nullptr;
-
-  bool operator==(const Name& other) const {
-    return value == other.value;
-  }
-};
-
-struct Dot {};
-
-struct Square {
-  bool negation = false;
-  std::vector<std::pair<char, char>> ranges;
-};
-
-struct Primary {
-  enum Kind {
-    kName,
-    kDot,
-    kGrouping,
-    kNumber,
-    kSquare,
-    kChar
-  };
-
-  std::variant<Name, Dot, Expression, std::string, Square, char> value;
-
-  enum Suffix {
-    kNone,
-    kZeroOrOne,
-    kZeroOrMore,
-    kOneOrMore
-  } suffix = kNone;
-};
-
-struct Match {
-  std::string binding;
-  Primary primary;
-};
-
-struct PayloadUnpack {
-  Name mapping_name;
-  std::optional<Expression> expr;
-  std::string action;
-};
-
-struct OrExpression {
-  Expression expr;
-  std::string action;
-};
-
-struct Mapping {
-  std::string condition;
-  std::string payload_type;
-  std::string unpack_action;
-};
-
-struct Rule {
-  Name name;
-  std::string color;
-
-  enum Kind {
-    kOrExpression,
-    kPayloadUnpack,
-    kMapping
-  };
-
-  std::variant<OrExpression, PayloadUnpack, Mapping> value;
-};
 
 // mapping_name = ` [^`]+ `
 Name parse_mapping_name(Input& input) {
@@ -439,12 +365,6 @@ Rule parse_mapping_rule(Input& input) {
   return Rule{name, "", Mapping{condition, type, action}};
 }
 
-struct Grammar {
-  std::string initial_color;
-  std::vector<Name> names;
-  std::vector<Rule> rules;
-};
-
 Grammar parse_grammar(Input& input) {
   Grammar result;
   while (true) {
@@ -720,7 +640,41 @@ void color(const Grammar& grammar) {
   color(grammar.names[0].resolved_to, grammar.initial_color);
 }
 
+void prepend_indent(std::stringstream &ss, size_t indent) {
+  for (size_t i = 0; i < indent; i++) {
+    ss << ' ';
+  }
+}
 
+void generate(std::stringstream &ss, const Expression &expr, const std::string &action, size_t indent) {
+  prepend_indent(ss, indent);
+  ss << "auto safepoint = input;\n";
+  for (auto &seq: expr) {
+
+  }
+}
+
+void generate(std::stringstream &ss, const OrExpression &expr, size_t indent) {
+  generate(ss, expr.expr, expr.action, indent);
+}
+
+void generate(std::stringstream &ss, const Rule &rule) {
+  ss << "// " << rule << "\n";
+  ss << "auto " << rule.name << "(" << rule.color << " &input) {\n";
+  switch (rule.value.index()) {
+    case Rule::kOrExpression:
+      generate(ss, std::get<Rule::kOrExpression>(rule.value), 2);
+      break;
+    default:
+      throw std::logic_error("unreachable");
+  }
+}
+
+void generate(std::stringstream &ss, const Grammar &grammar) {
+  for (auto &rule: grammar.rules) {
+    generate(ss, rule);
+  }
+}
 
 int main(int argc, char **argv) {
   if (argc < 2) throw std::runtime_error("Expected grammar name as an argument");

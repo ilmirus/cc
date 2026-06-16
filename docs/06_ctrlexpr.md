@@ -178,7 +178,7 @@ mapping = ^ mapping_name if raw-expression (~ identifier action)?
 Возьмём, к примеру, правило `integer = hex_integer | oct_integer | dec_integer`, сгенерированный код будет выглядеть
 примерно как
 ```
-auto parse_integer(PPInput &input) {
+auto parse_integer(PPInput &input) -> ParseResult<...> {
   auto safepoint = input;
   auto result = parse_hex_integer(input);
   if (result.has_value()) return result;
@@ -195,9 +195,37 @@ auto parse_integer(PPInput &input) {
 }
 ```
 
-Современные плюсы позволяют не писать возвращаемые типы, если аккуратно код генерировать (`decltype` я как раз для этого
-и использую). Поэтому я нигде не упоминал возвращаемые типы, только входные - возвращаемые типы будут выводиться
-компилятором.
+где `ParseResult` - это шаблон от типа действия. В данном случае `CtrlExpr`. Однако, я буду генерировать код так,
+что этот тип будет выводиться плюсовым компилятором за меня. Вместо многоточия будет огромный `decltype` или что-то
+подобное. Помимо результата действия этот шаблон будет содержать ещё что было заматчено (то есть, какие токены
+или строка привели к этому результату), и был ли вообще матч.
+
+Кстати, ещё одна причина, почему я выбрал плюсы - шаблонное метапрограммирование. Благодаря ему я могу в подобных
+случаях полагаться на плюсовый компилятор и не усложнять свой DSL. Ну и ещё можно легко задать тип контейнера в
+зависимости от типа элемента. Что-то типа
+```
+templace<class Input, Output>
+struct ParseResult {
+  using InputElem = std::invoke_result_t<
+    decltype(&Input::peek),
+    const Input&,
+    int
+  >;
+
+  using Container = std::conditional_t<
+    std::is_same_v<InputElem, char>,
+    std::string,
+    std::vector<InputElem>
+  >;
+  
+  std::optional<Container> matched;
+  std::optional<Output> result; 
+};
+```
+
+Ну да, плюсы очень мощные, но безмерно многословные и со странным синтаксисом. Можно я не буду объяснять
+`invoke_result_t` и `conditional_t`? Мне самому не нравится синтаксис, к примеру, в D, это сделано гораздо
+элегантнее - там `static if` позволяет объявлять типы внутри класса, чего мне сейчас не хватает в плюсах.
 
 ### Mappings
 

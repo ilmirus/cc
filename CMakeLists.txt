@@ -37,7 +37,8 @@ set_target_properties(lex PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lex
 )
 
-add_executable(gnm gnm/gnm.cpp)
+add_executable(gnm gnm/gnm.cpp
+        gnm/ast.h)
 target_link_libraries(gnm grammar_common utils)
 set_target_properties(gnm PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/gnm
