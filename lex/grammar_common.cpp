@@ -4,8 +4,6 @@
 #include <iostream>
 #include <sstream>
 
-extern bool trace;
-
 bool Input::starts_with(const std::string &str) {
   auto safepoint = offset;
   for (char c: str) {
@@ -28,9 +26,6 @@ bool is_identifier(char c) {
 }
 
 std::string parse_identifier(Input &input) {
-  if (trace)
-    std::cout << "\n====\nparse_identifier: " << input.rest() << std::endl;
-
   if (!is_identifier_start(input.peek())) {
     throw std::runtime_error("Expected identifier, got: " + input.rest());
   }
@@ -43,9 +38,6 @@ std::string parse_identifier(Input &input) {
 }
 
 std::string parse_action(Input &input, const std::string &name) {
-  if (trace)
-    std::cout << "\n====\nparse_action: " << input.rest() << std::endl;
-
   if (input.peek() != '{') {
     throw std::runtime_error("Expected '{' to start action in " + name + " " + input.rest());
   }
@@ -72,9 +64,6 @@ std::string parse_action(Input &input, const std::string &name) {
 }
 
 std::string parse_grouping(Input &input, const std::string &rule_name, char begin, char end) {
-  if (trace)
-    std::cout << "\n====\nparse_grouping: " << input.rest() << std::endl;
-
   if (input.peek() != begin) {
     throw std::runtime_error(
       std::format("Expected '{}' while parsing grouping in {}: {}", begin, rule_name, input.rest())

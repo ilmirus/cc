@@ -35,12 +35,7 @@ std::string begin_block;
 std::string before_block;
 std::string after_block;
 
-bool trace = false;
-
 std::string parse_pattern_char(Input &input, const std::string &rule_name) {
-  if (trace)
-    std::cout << "\n====\nparse_pattern_char: " << input.rest() << std::endl;
-
   if (input.peek() == 0) {
     throw std::runtime_error("Unexpected EOF while parsing pattern in " + rule_name);
   }
@@ -63,9 +58,6 @@ std::string parse_pattern_char(Input &input, const std::string &rule_name) {
 // parens = '(' (grouping | [^)])* ')'
 // square = '[' (grouping | [^\]])* ']'
 std::string parse_pattern(Input &input, const std::string &rule_name) {
-  if (trace)
-    std::cout << "\n====\nparse_pattern: " << input.rest() << std::endl;
-
   char c = input.peek();
   std::stringstream result;
   while (c != '{' && c != '\n' && c != 0) {
@@ -123,9 +115,6 @@ Rule parse_rule(Input &input) {
 }
 
 std::vector<Rule> parse_grammar(Input &input) {
-  if (trace)
-    std::cout << "\n====\nparse: " << input.rest() << std::endl;
-
   std::vector<Rule> result;
   while (input.peek() != 0) {
     input.skip_ws();

@@ -38,7 +38,11 @@ set_target_properties(lex PROPERTIES
 )
 
 add_executable(gnm gnm/gnm.cpp
-        gnm/ast.h)
+        gnm/ast.h
+        gnm/parse.h
+        gnm/parse.cpp
+        gnm/pretty_print.h
+        gnm/pretty_print.cpp)
 target_link_libraries(gnm grammar_common utils)
 set_target_properties(gnm PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/gnm
