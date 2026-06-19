@@ -138,6 +138,50 @@ void prepend_indent(std::stringstream &ss, size_t indent) {
   }
 }
 
+const Rule *find_actionable_rule(const Rule &rule, std::set<const Rule *> &visited);
+
+const Rule *find_actionable_rule(const Expression &expr, std::set<const Rule *> &visited) {
+  for (const auto &seq: expr) {
+    for (const auto &match: seq) {
+      switch (match.primary.value.index()) {
+        case Primary::kName: {
+          const auto &[_, rule] = std::get<Name>(match.primary.value);
+          return find_actionable_rule(*rule, visited);
+        }
+        case Primary::kGrouping:
+          return find_actionable_rule(std::get<Expression>(match.primary.value), visited);
+        default:
+          // nothing to do
+      }
+    }
+  }
+  return nullptr;
+}
+
+const Rule *find_actionable_rule(const Rule &rule, std::set<const Rule *> &visited) {
+  if (visited.contains(&rule))
+    return nullptr;
+  visited.insert(&rule);
+  switch (rule.value.index()) {
+    case Rule::kOrExpression: {
+      auto expr = std::get<OrExpression>(rule.value);
+      if (!expr.action.empty())
+        return &rule;
+      return find_actionable_rule(expr.expr, visited);
+    }
+    case Rule::kPayloadUnpack: {
+      auto unpack = std::get<PayloadUnpack>(rule.value);
+      if (!unpack.action.empty())
+        return &rule;
+      if (unpack.expr.has_value()) {
+        return find_actionable_rule(unpack.expr.value(), visited);
+      }
+    }
+    default:
+      return nullptr;
+  }
+}
+
 void generate(std::stringstream &ss, const Expression &expr, const std::string &action, size_t indent) {
   prepend_indent(ss, indent);
   ss << "auto safepoint = input;\n";
@@ -155,7 +199,7 @@ void generate(std::stringstream &ss, const Rule &rule) {
   ss << "auto " << rule.name << "(" << rule.color << " &input) {\n";
   switch (rule.value.index()) {
     case Rule::kOrExpression:
-      generate(ss, std::get<Rule::kOrExpression>(rule.value), 2);
+      generate(ss, std::get<OrExpression>(rule.value), 2);
       break;
     default:
       throw std::logic_error("unreachable");
