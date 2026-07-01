@@ -4,18 +4,17 @@
 
 using namespace std::string_literals;
 
-std::ostream &operator<<(std::ostream &os, const Name &name) {
-  if (name.resolved_to != nullptr) {
-    os << "<" << name.value << "(" << name.resolved_to->color << ")>";
+void pretty_print(std::ostream &os, const Name &name, const Grammar &grammar) {
+  if (grammar.symbol_table.contains(name)) {
+    os << "<" << name.value << "(" << grammar.symbol_table.at(name)->color << ")>";
   } else {
     os << name.value;
   }
-  return os;
 }
 
-static std::ostream &operator<<(std::ostream &os, const Expression &expression);
+static void pretty_print(std::ostream &os, const Expression &expression, const Grammar &grammar);
 
-static std::ostream &operator<<(std::ostream &os, const Square &square) {
+static void pretty_print(std::ostream &os, const Square &square) {
   os << "[";
   if (square.negation) {
     os << "^";
@@ -23,36 +22,29 @@ static std::ostream &operator<<(std::ostream &os, const Square &square) {
   for (const auto &[start, end]: square.ranges) {
     os << start;
     if (end != 0) {
-      os << "-";
+      os << "-" << end;
     }
-    os << end;
   }
   os << "]";
-  return os;
 }
 
-static std::ostream &operator<<(std::ostream &os, const Primary &primary) {
-  switch (primary.value.index()) {
-    case Primary::kName:
-      os << std::get<Primary::kName>(primary.value);
-      break;
-    case Primary::kDot:
-      os << ".";
-      break;
-    case Primary::kGrouping:
-      os << "(" << std::get<Primary::kGrouping>(primary.value) << ")";
-      break;
-    case Primary::kNumber:
-      os << std::get<Primary::kNumber>(primary.value);
-      break;
-    case Primary::kSquare:
-      os << std::get<Primary::kSquare>(primary.value);
-      break;
-    case Primary::kChar:
-      os << std::get<Primary::kChar>(primary.value);
-      break;
-    default:
-      throw std::logic_error("unreachable");
+static void pretty_print(std::ostream &os, const Primary &primary, const Grammar &grammar) {
+  if (auto *name = primary.as_name()) {
+    pretty_print(os, *name, grammar);
+  } else if (primary.is_dot()) {
+    os << ".";
+  } else if (auto *grouping = primary.as_grouping()) {
+    os << "(";
+    pretty_print(os, *grouping, grammar);
+    os << ")";
+  } else if (auto *number = primary.as_number()) {
+    os << *number;
+  } else if (auto *square = primary.as_square()) {
+    pretty_print(os, *square);
+  } else if (auto *c = primary.as_char()) {
+    os << *c;
+  } else {
+    throw std::logic_error("unreachable");
   }
 
   switch (primary.suffix) {
@@ -68,81 +60,91 @@ static std::ostream &operator<<(std::ostream &os, const Primary &primary) {
       os << "+";
       break;
   }
-  return os;
 }
 
-static std::ostream &operator<<(std::ostream &os, const Match &match) {
-  if (!match.binding.empty()) {
-    os << match.binding << ":";
+static void pretty_print(std::ostream &os, const Binding &binding, const Grammar &grammar) {
+  if (!binding.binding.empty()) {
+    os << binding.binding << ":";
   }
-  os << match.primary;
-  return os;
+  pretty_print(os, binding.primary, grammar);
 }
 
-static std::ostream &operator<<(std::ostream &os, const Sequence &sequence) {
+static void pretty_print(std::ostream &os, const Sequence &sequence, const Grammar &grammar) {
   for (size_t i = 0, first = true; i < sequence.size(); i++, first = false) {
     if (!first) {
       os << " ";
     }
-    os << sequence[i];
+    pretty_print(os, sequence[i], grammar);
   }
-  return os;
 }
 
-static std::ostream &operator<<(std::ostream &os, const Expression &expression) {
+static void pretty_print(std::ostream &os, const Expression &expression, const Grammar &grammar) {
   for (size_t i = 0, first = true; i < expression.size(); i++, first = false) {
     if (!first) {
       os << " | ";
     }
-    os << expression[i];
+    pretty_print(os, expression[i], grammar);
   }
-  return os;
 }
 
-static std::ostream &operator<<(std::ostream &os, const OrExpression &expr) {
-  os << expr.expr << " " << expr.action;
-  return os;
+static void pretty_print(std::ostream &os, const OrExpression &expr, const Grammar &grammar) {
+  pretty_print(os, expr.expr, grammar);
+  if (!expr.action.empty()) {
+    os << " " << expr.action;
+  }
 }
 
-static std::ostream &operator<<(std::ostream &os, const PayloadUnpack &pa) {
-  os << pa.mapping_name << " ~ ";
+static void pretty_print(std::ostream &os, const BoundExpression &expr, const Grammar &grammar) {
+  for (size_t i = 0, first = true; i < expr.bindings.size(); i++, first = false) {
+    if (!first) {
+      os << " ";
+    }
+    pretty_print(os, expr.bindings[i], grammar);
+  }
+  if (!expr.action.empty()) {
+    os << " " << expr.action;
+  }
+}
+
+static void pretty_print(std::ostream &os, const PayloadUnpack &pa, const Grammar &grammar) {
+  pretty_print(os, pa.mapping_name, grammar);
+  os << " ~ ";
   if (pa.expr.has_value()) {
-    os << pa.expr.value() << " ";
+    pretty_print(os, pa.expr.value(), grammar);
   }
-  os << pa.action;
-  return os;
+  if (!pa.action.empty()) {
+    os << " " << pa.action;
+  }
 }
 
-static std::ostream &operator<<(std::ostream &os, const Mapping &m) {
-  os << " if " << m.condition;
+static void pretty_print(std::ostream &os, const Mapping &m) {
+  os << "if " << m.condition;
   if (!m.payload_type.empty()) {
     os << " ~ " << m.payload_type << " " << m.unpack_action;
   }
-  return os;
 }
 
-std::ostream &operator<<(std::ostream &os, const Rule &rule) {
-  os << rule.name;
+void pretty_print(std::ostream &os, const Rule &rule, const Grammar &grammar) {
+  pretty_print(os, rule.name, grammar);
 
-  switch (rule.value.index()) {
-    case Rule::kOrExpression:
-      os << " = " << std::get<Rule::kOrExpression>(rule.value);
-      break;
-    case Rule::kPayloadUnpack:
-      os << " = " << std::get<Rule::kPayloadUnpack>(rule.value);
-      break;
-    case Rule::kMapping:
-      os << std::get<Rule::kMapping>(rule.value);
-      break;
-    default:
-      throw std::logic_error("unreachable " + rule.name.value);
+  os << " = ";
+
+  if (auto *bound_expr = rule.as_bound_expression()) {
+    pretty_print(os, *bound_expr, grammar);
+  } else if (auto *alternative = rule.as_alternative()) {
+    pretty_print(os, *alternative, grammar);
+  } else if (auto *unpack = rule.as_unpack()) {
+    pretty_print(os, *unpack, grammar);
+  } else if (auto *mapping = rule.as_mapping()) {
+    pretty_print(os, *mapping);
+  } else {
+    throw std::logic_error("unreachable " + rule.name.value);
   }
-  return os;
 }
 
-std::ostream &operator<<(std::ostream &os, const Grammar &grammar) {
-  for (const auto &name: grammar.names) {
-    os << *name.resolved_to << "\n";
+void pretty_print(std::ostream &os, const Grammar &grammar) {
+  for (const auto &rule: grammar.rules) {
+    pretty_print(os, rule, grammar);
+    os << "\n";
   }
-  return os;
 }

@@ -5,20 +5,21 @@ using namespace std::string_literals;
 // grammar file
 
 // file = rule*
-// rule = rule_start (mapping_name ~ expression? action?) | (expression action?)
+// rule = rule_start (bound_expression | (mapping_name ~ bound_expression?) | expression) action?
 // rule_start = ^ name \=
 // name = identifier | mapping_name
+// bound_expression = (!(\{ | \| | \() binding)*
+// binding = (identifier :)? primary primary_suffix?
 // expression = sequence (\| sequence)*
-// sequence = (!sequence_terminator match)*
+// sequence = (!sequence_terminator primary primary_suffix?)*
 // sequence_terminator = rule_start | \| | \{ | \)
-// match = (identifier :)? primary primary_suffix
 // primary = name
 //         | \.
 //         | \( expression \)
 //         | number
 //         | square
 //         | escaped_char
-// primary_suffix = (\? | \* | \+)?
+// primary_suffix = \? | \* | \+
 // action = { [^}]+ }
 // mapping_name = ` [^`]+ `
 // number = [0-9]+
@@ -189,9 +190,9 @@ static Primary parse_primary(Input &input) {
   return result;
 }
 
-// match = (identifier :)? primary (\? | \* | \+)?
-static Match parse_match(Input &input) {
-  Match result;
+// binding = (identifier :)? primary (\? | \* | \+)?
+static Binding parse_binding(Input &input) {
+  Binding result;
 
   input.skip_ws();
   if (is_identifier_start(input.peek())) {
@@ -233,7 +234,7 @@ static std::optional<Name> parse_rule_start_safe(Input &input) {
   return name;
 }
 
-// sequence = (!sequence_terminator match)*
+// sequence = (!sequence_terminator primary primary_suffix)*
 // sequence_terminator = rule_start | \| | \{ | \)
 static Sequence parse_sequence(Input &input) {
   Sequence result;
@@ -247,7 +248,7 @@ static Sequence parse_sequence(Input &input) {
     input.skip_ws();
     if (input.peek() == '|' || input.peek() == '{' || input.peek() == ')')
       return result;
-    result.emplace_back(parse_match(input));
+    result.emplace_back(parse_primary(input));
   }
 }
 
@@ -261,6 +262,36 @@ static Expression parse_expression(Input &input) {
     input.skip();
     input.skip_ws();
     result.emplace_back(parse_sequence(input));
+  }
+  return result;
+}
+
+// bound_expression = (!(\{ | \| | \( | rule_start) binding)*
+static std::optional<BoundExpression> parse_bound_expression_safe(Input &input, const Name &name) {
+  auto safepoint = input;
+  BoundExpression result;
+
+  while (true) {
+    auto before_rule_start = input;
+    if (parse_rule_start_safe(input).has_value()) {
+      input = before_rule_start;
+      break;
+    }
+    input = before_rule_start;
+
+    input.skip_ws();
+    if (input.peek() == 0 || input.peek() == '{') {
+      break;
+    }
+    if (input.peek() == '|' || input.peek() == '(') {
+      input = safepoint;
+      return {};
+    }
+    result.bindings.emplace_back(parse_binding(input));
+  }
+
+  if (input.peek() == '{') {
+    result.action = parse_action(input, name.value);
   }
   return result;
 }
@@ -279,9 +310,9 @@ static std::optional<PayloadUnpack> parse_payload_unpack_safe(Input &input, cons
   }
   input.skip();
   input.skip_ws();
-  std::optional<Expression> expr;
+  std::optional<BoundExpression> expr;
   if (input.peek() != '{') {
-    expr.emplace(parse_expression(input));
+    expr = parse_bound_expression_safe(input, name);
   }
 
   input.skip_ws();
@@ -317,6 +348,11 @@ static std::optional<Rule> parse_rule_safe(Input &input) {
     if (payload_unpack.has_value()) {
       return Rule{name, "", payload_unpack.value()};
     }
+  }
+  // Then parse bound expression
+  auto bound_expression = parse_bound_expression_safe(input, name);
+  if (bound_expression.has_value()) {
+    return Rule{name, "", bound_expression.value()};
   }
 
   return Rule{name, "", parse_or_expression(input, name)};

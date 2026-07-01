@@ -136,7 +136,7 @@ dec_digit = [0-9]
 
 ```
 grammar = (rule | mapping)*
-rule = rule_start (mapping_name ~ expression? action?) | (expression action?)
+rule = rule_start ((mapping_name ~ expression?) | expression) action?
 rule_start = ^ name \=
 name = identifier | mapping_name
 expression = sequence (\| sequence)*
@@ -148,7 +148,7 @@ primary = name
 primary_suffix = (\? | \* | \+)?
 mapping_name = ` [^`]+ `
 
-mapping = ^ mapping_name if raw-expression (~ identifier action)?
+mapping = ^ mapping_name if \( raw-expression \) (~ identifier action)?
 ```
 
 ## Унификация парсеров
@@ -206,6 +206,119 @@ auto parse_integer(PPInput &input) -> std::optional<...> {
 наследовать от одного интерфейса. Чего я хочу избежать сейчас. Потому что наследовать всё дерево от одного интерфейса
 имеет смысл для визиторов, а на них я достаточно насмотрелся на работе. К тому же, я всё равно код прохода по дереву
 буду генерировать.
+
+### Bindings
+
+Кстати про kometa. Там я совершил ту же ошибку, что совершил в первой версии грамматики - всё что угодно может быть
+именованным. Например
+```
+repeat = (a:subrule)+ -> { ... }
+```
+и тогда `a` будет перезаписываться в цикле, что приведёт к трудноотлаживаемым багам и усложнит кодогенерацию. Поэтому,
+теперь я байндинги разрешаю только в топ-левеле и если нет ветвлений. Следовательно, грамматика немного усложнится.
+```
+rule = rule_start (bound_expression (mapping_name ~ bound_expression?) | expression) action?
+bound_expression = (!(\{ | \| | \() binding)*
+binding = (identifier :)? match
+// ...
+match = primary primary_suffix?
+```
+
+Как теперь будет выглядеть сгенерированный код? Вопрос не праздный, так как не имеет смысла заводить переменные, если
+их не использовать в правилах. Давайте на минуту представим, что у нас есть подобное правило
+
+```
+rule = a:subrule1 b:subrule2 { call(a, b) }
+```
+
+у нас не получится использовать трюк с `std::optional<std::invoke_result_t<decltype(parse_subrule1), Input>>`, потому
+что возвращаемый тип задаётся не подправилами, а самим правилом. Давайте попробуем решить задачу в лоб.
+```
+auto parse_rule(Input &input) {
+  auto safepoint = input;
+  auto a_opt = parse_subrule1(input);
+  if (!a_opt.has_value()) {
+    input = safepoint;
+    return {};
+  }
+  
+  auto b_opt = parse_subrule2(input);
+  if (!b_opt.has_value()) {
+    input = safepoint;
+    return {};
+  }
+  
+  auto a = a_opt.value();
+  auto b = b_opt.value();
+  return std::optional(call(a, b));
+}
+```
+
+В языке с нормальными нулябельными типами (типа Котлина) это бы сработало, но не в плюсах. В плюсах огромная таблица
+неявного приведения типов, которая, по идее, должна здесь сработать и вывести тип функции за нас, но нет. При попытке
+скомпилировать компилятор ругнётся `error: returning initializer list` и откажется привести к единому
+```
+std::optional<
+  std::invoke_result_t<decltype(call), 
+    std::invoke_result_t<decltype(parse_subrule1), Input>,
+    std::invoke_result_t<decltype(parse_subrule2), Input>>>
+```
+
+Да, я специально выписал весь тип. Но помните про ограничение - в `{}` у нас может быть любой плюсовый код, не только
+простой вызов функции и писать парсер плюсов, только чтобы выводить типы, который компилятор, в теории, должен выводить
+за нас, мне не хочется.
+
+А так как компилятор должен выводить типы за нас, ему можно подсказать. Нам нужно выражение, в котором будет весь код
+с точки зрения типов, но которое не будет выполняться. Его задача - всего лишь дать компилятору подсказку. То есть,
+нам нужно лямбда выражение.
+```
+auto TYPE_HINTER = [](Input &inut) -> decltype(auto) {
+  auto a = parse_subrule1(input).value();
+  auto b = parse_subrule2(input).value();
+  return call(a, b);
+}
+using RETURN_TYPE = std::invoke_result_t<decltype(TYPE_HINTER), Input)>;
+```
+
+И код возврата при мисматче будет выглядеть как
+```
+  if (!a_opt.has_value()) {
+    input = safepoint;
+    return std::optional<RETURN_TYPE>{};
+  }
+```
+
+А вся функция будет
+
+```
+auto parse_rule(Input &input) {
+  auto TYPE_HINTER = [](Input &inut) -> decltype(auto) {
+    auto a = parse_subrule1(input).value();
+    auto b = parse_subrule2(input).value();
+    return call(a, b);
+  }
+  using RETURN_TYPE = std::invoke_result_t<decltype(TYPE_HINTER), Input)>;
+
+  auto safepoint = input;
+  auto a_opt = parse_subrule1(input);
+  if (!a_opt.has_value()) {
+    input = safepoint;
+    return std::optional<RETURN_TYPE>{};
+  }
+  
+  auto b_opt = parse_subrule2(input);
+  if (!b_opt.has_value()) {
+    input = safepoint;
+    return std::optional<RETURN_TYPE>{};
+  }
+  
+  auto a = a_opt.value();
+  auto b = b_opt.value();
+  return std::optional(call(a, b));
+}
+```
+
+И теперь компилятор сможет правильно вывести возвращаемый тип функции.
 
 ### Mappings
 

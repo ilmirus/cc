@@ -42,7 +42,8 @@ add_executable(gnm gnm/gnm.cpp
         gnm/parse.h
         gnm/parse.cpp
         gnm/pretty_print.h
-        gnm/pretty_print.cpp)
+        gnm/pretty_print.cpp
+        gnm/ast.cpp)
 target_link_libraries(gnm grammar_common utils)
 set_target_properties(gnm PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/gnm
