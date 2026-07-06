@@ -92,6 +92,12 @@ void prepend_indent(std::stringstream &ss, size_t indent) {
   }
 }
 
+std::string leftpad(size_t indent) {
+  std::stringstream ss;
+  prepend_indent(ss, indent);
+  return ss.str();
+}
+
 const Rule *find_actionable_rule(const Rule &rule, std::set<const Rule *> &visited, const Grammar &grammar);
 const Rule *find_actionable_rule(const Expression &expr, std::set<const Rule *> &visited, const Grammar &grammar);
 
@@ -143,8 +149,8 @@ const Rule *find_actionable_rule(const Rule &rule, std::set<const Rule *> &visit
     if (!unpack->action.empty())
       return &rule;
     if (unpack->expr.has_value()) {
-      for (auto &binding: unpack->expr.value().bindings) {
-        if (auto *resolved = binding.primary.as_rule(grammar)) {
+      for (const auto &[_, primary]: unpack->expr.value().bindings) {
+        if (auto *resolved = primary.as_rule(grammar)) {
           find_actionable_rule(*resolved, visited, grammar);
         }
       }
@@ -153,30 +159,66 @@ const Rule *find_actionable_rule(const Rule &rule, std::set<const Rule *> &visit
   return nullptr;
 }
 
-void generate(std::stringstream &ss, const Expression &expr, const std::string &action, size_t indent) {
-  prepend_indent(ss, indent);
-  ss << "auto safepoint = input;\n";
-  for (auto &seq: expr) {
-    // generate(ss, seq, )
+void generate(std::ostream &ss, const Primary &primary, size_t indent, bool first, const Grammar &grammar) {
+  ss << leftpad(indent) << "// ";
+  pretty_print(ss, primary, grammar);
+  ss << "\n";
+  ss << leftpad(indent);
+  if (first)
+    ss << "auto ";
+  if (auto *name = primary.as_name()) {
+    ss << "result = parse_" << name->value << "(input);\n";
+  } else {
+    throw std::logic_error("TODO: implement");
   }
+  ss << leftpad(indent) << "if (result.has_value()) return result;\n";
+  ss << "\n";
 }
 
-void generate(std::stringstream &ss, const OrExpression &expr, size_t indent) {
-  generate(ss, expr.expr, expr.action, indent);
+void generate(std::ostream &ss, const std::vector<Primary> &seq, size_t indent, bool first, const Grammar &grammar) {
+  if (seq.size() != 1)
+    throw std::logic_error("TODO: implement");
+
+  generate(ss, seq[0], indent, first, grammar);
 }
 
-void generate(std::stringstream &ss, const Rule &rule, const Grammar &grammar) {
+void generate(
+  std::ostream &ss, const Expression &expr, const std::string &action, size_t indent, const Grammar &grammar
+) {
+  ss << leftpad(indent) << "auto safepoint = input;\n";
+  for (size_t i = 0; i < expr.size(); i++) {
+    generate(ss, expr[i], indent, i == 0, grammar);
+  }
+  ss << leftpad(indent) << "input = safepoint;\n";
+  ss << leftpad(indent) << "return {};\n";
+}
+
+void generate(std::ostream &ss, const OrExpression &expr, size_t indent, const Grammar &grammar) {
+  generate(ss, expr.expr, expr.action, indent, grammar);
+}
+
+void generate(std::ostream &ss, const Rule &rule, const Grammar &grammar) {
+  // Function header
   ss << "// ";
   pretty_print(ss, rule, grammar);
   ss << "\n";
-  ss << "auto ";
-  pretty_print(ss, rule.name, grammar);
-  ss << "(" << rule.color << " &input) {\n";
-  if (auto *alternative = rule.as_alternative()) {
-    generate(ss, *alternative, 2);
-  } else {
-    throw std::logic_error("unreachable");
+  ss << "auto parse_" << rule.name.value << "(" << rule.color << "&input) ";
+
+  std::set<const Rule *> visited;
+  auto *rule_for_type_deduction = find_actionable_rule(rule, visited, grammar);
+  if (&rule != rule_for_type_deduction) {
+    ss << "-> std::optional<std::invoke_result_t<decltype(parse_" << rule_for_type_deduction->name.value << "), ";
+    ss << rule_for_type_deduction->color << ">> ";
   }
+  ss << "{\n";
+
+  if (auto *alternative = rule.as_alternative()) {
+    generate(ss, *alternative, 2, grammar);
+  } else {
+    throw std::logic_error("TODO: implement");
+  }
+
+  ss << "}\n\n";
 }
 
 void generate(std::stringstream &ss, const Grammar &grammar) {
@@ -185,21 +227,19 @@ void generate(std::stringstream &ss, const Grammar &grammar) {
   }
 }
 
+extern bool generate_colors;
+
 int main(int argc, char **argv) {
   if (argc < 2)
     throw std::runtime_error("Expected grammar name as an argument");
-  auto name = std::string(argv[1]);
-  auto raw_grammar = slurp(name);
+  auto file_name = std::string(argv[1]);
+  auto raw_grammar = slurp(file_name);
   auto input = Input(raw_grammar);
   auto grammar = parse_grammar(input);
-  check_for_duplicates(grammar);
-  std::cout << "Unresolved:\n";
-  pretty_print(std::cout, grammar);
-  std::cout << "\n";
+
   check_for_duplicates(grammar);
   color(grammar);
-  std::cout << "Resolved:\n";
-  pretty_print(std::cout, grammar);
-  std::cout << "\n";
+
+  generate(std::cout, grammar.rules[0], grammar);
   return 0;
 }

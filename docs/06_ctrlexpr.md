@@ -94,7 +94,7 @@ identifier = `identifier` ~ { CtrlExpr { CtrlExpr::kSigned, defined(it) } }
 NAN = . { CtrlExpr { CtrlExpr::kError, 0 }; }
 ```
 обратите внимание на правило `pp_number`. Это специальное правило распаковки - тильда (которую я украл
-с перла) означает 'match' - после неё идет паттерн, которому должо соответствовать содержимое токена.
+с перла) означает 'match' - после неё идет паттерн, которому должно соответствовать содержимое токена.
 ```
 integer = hex_integer | oct_integer | dec_integer
 
@@ -117,7 +117,7 @@ hex_digit = [0-9a-fA-F]
 oct_digit = [0-7]
 dec_digit = [0-9]
 ```
-Это правила работают не на токенах, а символах. Соответственно, надо как-то сказать нашему генератору
+Эти правила работают не на токенах, а символах. Соответственно, надо как-то сказать нашему генератору
 парсеров, что входной тип для этих правила меняется. То есть придётся граф правил красить.
 
 Что я имею в виду - нам надо разметить, какие правила работают на каких типах. Самый простой вариант -
@@ -183,14 +183,13 @@ auto parse_integer(PPInput &input) -> std::optional<...> {
   auto result = parse_hex_integer(input);
   if (result.has_value()) return result;
 
-  input = safepoint;
   result = parse_dec_integer(input);
   if (result.has_value()) return result;
 
-  input = safepoint;
   result = parse_oct_integer(input);
   if (result.has_value()) return result;
   
+  input = safepoint;
   return {};
 }
 ```
@@ -272,7 +271,7 @@ std::optional<
 с точки зрения типов, но которое не будет выполняться. Его задача - всего лишь дать компилятору подсказку. То есть,
 нам нужно лямбда выражение.
 ```
-auto TYPE_HINTER = [](Input &inut) -> decltype(auto) {
+auto TYPE_HINTER = [](Input &input) -> decltype(auto) {
   auto a = parse_subrule1(input).value();
   auto b = parse_subrule2(input).value();
   return call(a, b);
@@ -292,7 +291,7 @@ using RETURN_TYPE = std::invoke_result_t<decltype(TYPE_HINTER), Input)>;
 
 ```
 auto parse_rule(Input &input) {
-  auto TYPE_HINTER = [](Input &inut) -> decltype(auto) {
+  auto TYPE_HINTER = [](Input &input) -> decltype(auto) {
     auto a = parse_subrule1(input).value();
     auto b = parse_subrule2(input).value();
     return call(a, b);

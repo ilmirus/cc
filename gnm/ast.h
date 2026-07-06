@@ -21,12 +21,12 @@ struct Name {
 
   Rule *as_rule(Grammar &) const;
   const Rule *as_rule(const Grammar &) const;
-};
 
-struct NameHash {
-  std::size_t operator()(const Name &name) const noexcept {
-    return std::hash<std::string>{}(name.value);
-  }
+  struct Hash {
+    std::size_t operator()(const Name &name) const noexcept {
+      return std::hash<std::string>{}(name.value);
+    }
+  };
 };
 
 struct Dot {};
@@ -124,6 +124,6 @@ struct Rule {
 
 struct Grammar {
   std::string initial_color;
-  std::unordered_map<Name, Rule*, NameHash> symbol_table;
+  std::unordered_map<Name, Rule*, Name::Hash> symbol_table;
   std::vector<Rule> rules;
 };

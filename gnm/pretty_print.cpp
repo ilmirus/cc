@@ -4,8 +4,10 @@
 
 using namespace std::string_literals;
 
+bool generate_colors = false;
+
 void pretty_print(std::ostream &os, const Name &name, const Grammar &grammar) {
-  if (grammar.symbol_table.contains(name)) {
+  if (generate_colors && grammar.symbol_table.contains(name)) {
     os << "<" << name.value << "(" << grammar.symbol_table.at(name)->color << ")>";
   } else {
     os << name.value;
@@ -28,7 +30,7 @@ static void pretty_print(std::ostream &os, const Square &square) {
   os << "]";
 }
 
-static void pretty_print(std::ostream &os, const Primary &primary, const Grammar &grammar) {
+void pretty_print(std::ostream &os, const Primary &primary, const Grammar &grammar) {
   if (auto *name = primary.as_name()) {
     pretty_print(os, *name, grammar);
   } else if (primary.is_dot()) {
