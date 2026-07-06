@@ -240,8 +240,7 @@ static Sequence parse_sequence(Input &input) {
   Sequence result;
   while (true) {
     auto safepoint = input;
-    auto rule_start = parse_rule_start_safe(input);
-    if (rule_start.has_value()) {
+    if (parse_rule_start_safe(input)) {
       input = safepoint;
       return result;
     }
@@ -273,7 +272,7 @@ static std::optional<BoundExpression> parse_bound_expression_safe(Input &input, 
 
   while (true) {
     auto before_rule_start = input;
-    if (parse_rule_start_safe(input).has_value()) {
+    if (parse_rule_start_safe(input)) {
       input = before_rule_start;
       break;
     }
@@ -311,12 +310,15 @@ static std::optional<PayloadUnpack> parse_payload_unpack_safe(Input &input, cons
   input.skip();
   input.skip_ws();
   std::optional<BoundExpression> expr;
+  std::string action;
   if (input.peek() != '{') {
     expr = parse_bound_expression_safe(input, name);
+    if (expr && !expr->action.empty()) {
+      std::swap(action, expr->action);
+    }
   }
 
   input.skip_ws();
-  std::string action;
   if (input.peek() == '{') {
     action = parse_action(input, name.value);
   }
@@ -336,26 +338,23 @@ static OrExpression parse_or_expression(Input &input, const Name &name) {
 
 // rule = rule_start (expression action?) | (mapping_name ~ expression? action)
 static std::optional<Rule> parse_rule_safe(Input &input) {
-  auto rule_start = parse_rule_start_safe(input);
-  if (!rule_start.has_value())
-    return {};
-  auto name = rule_start.value();
+  if (auto name = parse_rule_start_safe(input)) {
 
-  input.skip_ws();
-  // Parse payload unpack first and then, if no `~` found, parse expression
-  if (input.peek() == '`') {
-    auto payload_unpack = parse_payload_unpack_safe(input, name);
-    if (payload_unpack.has_value()) {
-      return Rule{name, "", payload_unpack.value()};
+    input.skip_ws();
+    // Parse payload unpack first and then, if no `~` found, parse expression
+    if (input.peek() == '`') {
+      if (auto payload_unpack = parse_payload_unpack_safe(input, *name)) {
+        return Rule{*name, "", *payload_unpack};
+      }
     }
-  }
-  // Then parse bound expression
-  auto bound_expression = parse_bound_expression_safe(input, name);
-  if (bound_expression.has_value()) {
-    return Rule{name, "", bound_expression.value()};
-  }
+    // Then parse bound expression
+    if (auto bound_expression = parse_bound_expression_safe(input, *name)) {
+      return Rule{*name, "", *bound_expression};
+    }
 
-  return Rule{name, "", parse_or_expression(input, name)};
+    return Rule{*name, "", parse_or_expression(input, *name)};
+  }
+  return {};
 }
 
 static std::string parse_initial_color(Input &input) {
@@ -410,8 +409,8 @@ Grammar parse_grammar(Input &input) {
     if (input.peek() == '%') {
       result.initial_color = parse_initial_color(input);
     } else {
-      if (auto rule = parse_rule_safe(input); rule.has_value()) {
-        result.rules.emplace_back(rule.value());
+      if (auto rule = parse_rule_safe(input)) {
+        result.rules.emplace_back(*rule);
       } else {
         result.rules.emplace_back(parse_mapping_rule(input));
       }

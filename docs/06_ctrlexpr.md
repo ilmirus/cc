@@ -180,15 +180,16 @@ mapping = ^ mapping_name if \( raw-expression \) (~ identifier action)?
 ```
 auto parse_integer(PPInput &input) -> std::optional<...> {
   auto safepoint = input;
-  auto result = parse_hex_integer(input);
-  if (result.has_value()) return result;
 
-  result = parse_dec_integer(input);
-  if (result.has_value()) return result;
+  if (auto result = parse_hex_integer(input))
+    return *result;
 
-  result = parse_oct_integer(input);
-  if (result.has_value()) return result;
-  
+  if (auto result = parse_oct_integer(input))
+    return *result;
+
+  if (auto result = parse_dec_integer(input))
+    return *result;
+
   input = safepoint;
   return {};
 }

@@ -64,9 +64,9 @@ void color(Rule &rule, const std::string &initial_color, Grammar &grammar) {
     if (auto *resolved = mapping_name.as_rule(grammar)) {
       if (auto *mapping = resolved->as_mapping()) {
         color(*resolved, initial_color, grammar);
-        if (unpacking.has_value()) {
-          for (auto &binding: unpacking.value().bindings) {
-            if (auto *subrule = binding.primary.as_rule(grammar)) {
+        if (unpacking) {
+          for (auto &[_, primary]: unpacking.value().bindings) {
+            if (auto *subrule = primary.as_rule(grammar)) {
               color(*subrule, mapping->payload_type, grammar);
             }
           }
@@ -148,10 +148,11 @@ const Rule *find_actionable_rule(const Rule &rule, std::set<const Rule *> &visit
   if (auto *unpack = rule.as_unpack()) {
     if (!unpack->action.empty())
       return &rule;
-    if (unpack->expr.has_value()) {
-      for (const auto &[_, primary]: unpack->expr.value().bindings) {
+    if (unpack->expr) {
+      for (const auto &[_, primary]: unpack->expr->bindings) {
         if (auto *resolved = primary.as_rule(grammar)) {
-          find_actionable_rule(*resolved, visited, grammar);
+          if (auto found = find_actionable_rule(*resolved, visited, grammar))
+            return found;
         }
       }
     }
@@ -159,42 +160,36 @@ const Rule *find_actionable_rule(const Rule &rule, std::set<const Rule *> &visit
   return nullptr;
 }
 
-void generate(std::ostream &ss, const Primary &primary, size_t indent, bool first, const Grammar &grammar) {
-  ss << leftpad(indent) << "// ";
-  pretty_print(ss, primary, grammar);
-  ss << "\n";
-  ss << leftpad(indent);
-  if (first)
-    ss << "auto ";
+void generate(std::ostream &ss, const Primary &primary, size_t indent, const Grammar &grammar) {
   if (auto *name = primary.as_name()) {
-    ss << "result = parse_" << name->value << "(input);\n";
+    ss << leftpad(indent) << "if (auto result = parse_" << name->value << "(input))\n";
   } else {
     throw std::logic_error("TODO: implement");
   }
-  ss << leftpad(indent) << "if (result.has_value()) return result;\n";
-  ss << "\n";
+  ss << leftpad(indent) << "  return result;\n\n";
 }
 
-void generate(std::ostream &ss, const std::vector<Primary> &seq, size_t indent, bool first, const Grammar &grammar) {
+void generate(std::ostream &ss, const std::vector<Primary> &seq, size_t indent, const Grammar &grammar) {
   if (seq.size() != 1)
     throw std::logic_error("TODO: implement");
 
-  generate(ss, seq[0], indent, first, grammar);
+  generate(ss, seq[0], indent, grammar);
 }
 
-void generate(
-  std::ostream &ss, const Expression &expr, const std::string &action, size_t indent, const Grammar &grammar
-) {
+void generate(std::ostream &ss, const Expression &expr, size_t indent, const Grammar &grammar) {
   ss << leftpad(indent) << "auto safepoint = input;\n";
-  for (size_t i = 0; i < expr.size(); i++) {
-    generate(ss, expr[i], indent, i == 0, grammar);
+  for (auto &seq : expr) {
+    generate(ss, seq, indent, grammar);
   }
   ss << leftpad(indent) << "input = safepoint;\n";
   ss << leftpad(indent) << "return {};\n";
 }
 
 void generate(std::ostream &ss, const OrExpression &expr, size_t indent, const Grammar &grammar) {
-  generate(ss, expr.expr, expr.action, indent, grammar);
+  if (!expr.action.empty())
+    throw std::logic_error("TODO: implement");
+
+  generate(ss, expr.expr, indent, grammar);
 }
 
 void generate(std::ostream &ss, const Rule &rule, const Grammar &grammar) {

@@ -111,8 +111,8 @@ static void pretty_print(std::ostream &os, const BoundExpression &expr, const Gr
 static void pretty_print(std::ostream &os, const PayloadUnpack &pa, const Grammar &grammar) {
   pretty_print(os, pa.mapping_name, grammar);
   os << " ~ ";
-  if (pa.expr.has_value()) {
-    pretty_print(os, pa.expr.value(), grammar);
+  if (pa.expr) {
+    pretty_print(os, *pa.expr, grammar);
   }
   if (!pa.action.empty()) {
     os << " " << pa.action;
