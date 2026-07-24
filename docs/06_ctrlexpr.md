@@ -198,14 +198,17 @@ auto parse_integer(PPInput &input) -> std::optional<...> {
 Конкретный тип возвращаемого значения - `std::optional<std::invoke_result_t<decltype(parse_hex_integer), PPInput>>`.
 Выглядит громозко, но компилятор должен суметь тип вывести без явного указания. Так как сырой код в действиях я не хочу
 парсить, и не хочу явно задавать возвращаемый тип, то приходится полагаться на магию вывода типа в современных плюсах.
-В будущем я ещё планирую по графу ходить и отсекать рекурсивные ветки, чтобы компилятор не ругался, но пока хватает и
-этого - рекурсии пока что нет.
+А для того, чтобы понять, какое правило содержит действие, приходится ходить по графу и отсекать рекурсивные ветки.
+Если же у какой-нибудь функции нет возвращаемого типа, и его нельзя вывести, то компилятор ругнётся, поэтому я не вижу
+смысла отдельно красить граф и проверять, что у всех правил есть возвращаемый тип. Кстати, если возвращаемые типы не
+совпадают, то компилятор тоже ругнётся, поэтому я также не вижу смысла генерировать километровый `static_assert`,
+который бы проверял равенство возвращаемых типов.
 
 Кстати, в kometa я использовал подход как раз с явным указанием возвращаемого типа. Причём этот тип был один и тот же
 для всех правил. Мне это не понравилось, так как заставляло пользователя все классы в абстрактном синтаксическом дереве
 наследовать от одного интерфейса. Чего я хочу избежать сейчас. Потому что наследовать всё дерево от одного интерфейса
 имеет смысл для визиторов, а на них я достаточно насмотрелся на работе. К тому же, я всё равно код прохода по дереву
-буду генерировать.
+буду генерировать (когда-нибудь).
 
 ### Bindings
 
@@ -236,21 +239,16 @@ rule = a:subrule1 b:subrule2 { call(a, b) }
 ```
 auto parse_rule(Input &input) {
   auto safepoint = input;
-  auto a_opt = parse_subrule1(input);
-  if (!a_opt.has_value()) {
-    input = safepoint;
-    return {};
+  if (auto a_opt = parse_subrule1(input)) {
+    if (auto b_opt = parse_subrule2(input) {
+      auto a = *a_opt;
+      auto b = *b_opt;
+      return std::optional(call(a, b));
+    }
   }
-  
-  auto b_opt = parse_subrule2(input);
-  if (!b_opt.has_value()) {
-    input = safepoint;
-    return {};
-  }
-  
-  auto a = a_opt.value();
-  auto b = b_opt.value();
-  return std::optional(call(a, b));
+
+  input = safepoint;
+  return {};
 }
 ```
 
@@ -264,17 +262,17 @@ std::optional<
     std::invoke_result_t<decltype(parse_subrule2), Input>>>
 ```
 
-Да, я специально выписал весь тип. Но помните про ограничение - в `{}` у нас может быть любой плюсовый код, не только
-простой вызов функции и писать парсер плюсов, только чтобы выводить типы, который компилятор, в теории, должен выводить
-за нас, мне не хочется.
+Да, я специально выписал весь тип, чтобы, ну, почему бы и нет. Но помните про ограничение - в `{}` у нас может быть
+любой плюсовый код, не только простой вызов функции и писать парсер плюсов, только чтобы выводить типы, который
+компилятор, в теории, должен выводить за нас, мне не хочется. Думаю, не надо объяснять причины.
 
 А так как компилятор должен выводить типы за нас, ему можно подсказать. Нам нужно выражение, в котором будет весь код
 с точки зрения типов, но которое не будет выполняться. Его задача - всего лишь дать компилятору подсказку. То есть,
 нам нужно лямбда выражение.
 ```
 auto TYPE_HINTER = [](Input &input) -> decltype(auto) {
-  auto a = parse_subrule1(input).value();
-  auto b = parse_subrule2(input).value();
+  auto a = *parse_subrule1(input);
+  auto b = *parse_subrule2(input);
   return call(a, b);
 }
 using RETURN_TYPE = std::invoke_result_t<decltype(TYPE_HINTER), Input)>;
@@ -282,10 +280,8 @@ using RETURN_TYPE = std::invoke_result_t<decltype(TYPE_HINTER), Input)>;
 
 И код возврата при мисматче будет выглядеть как
 ```
-  if (!a_opt.has_value()) {
-    input = safepoint;
-    return std::optional<RETURN_TYPE>{};
-  }
+  input = safepoint;
+  return std::optional<RETURN_TYPE>{};
 ```
 
 А вся функция будет
@@ -293,32 +289,33 @@ using RETURN_TYPE = std::invoke_result_t<decltype(TYPE_HINTER), Input)>;
 ```
 auto parse_rule(Input &input) {
   auto TYPE_HINTER = [](Input &input) -> decltype(auto) {
-    auto a = parse_subrule1(input).value();
-    auto b = parse_subrule2(input).value();
+    auto a = *parse_subrule1(input);
+    auto b = *parse_subrule2(input);
     return call(a, b);
   }
   using RETURN_TYPE = std::invoke_result_t<decltype(TYPE_HINTER), Input)>;
 
   auto safepoint = input;
-  auto a_opt = parse_subrule1(input);
-  if (!a_opt.has_value()) {
-    input = safepoint;
-    return std::optional<RETURN_TYPE>{};
+  if (auto a_opt = parse_subrule1(input)) {
+    if (auto b_opt = parse_subrule2(input) {
+      auto a = *a_opt;
+      auto b = *b_opt;
+      return std::optional(call(a, b));
+    }
   }
   
-  auto b_opt = parse_subrule2(input);
-  if (!b_opt.has_value()) {
-    input = safepoint;
-    return std::optional<RETURN_TYPE>{};
-  }
-  
-  auto a = a_opt.value();
-  auto b = b_opt.value();
-  return std::optional(call(a, b));
+  input = safepoint;
+  return std::optional<RETURN_TYPE>{};
 }
 ```
 
 И теперь компилятор сможет правильно вывести возвращаемый тип функции.
+
+Третья ошибка, которую я совершил в kometa - все байндинги имели тип `MatchResult<TInput, TResult>`, где `TInput` в
+данном случае было бы `PPToken`, а `TResult`, который, как я уже говорил, надо было явно указывать - это общий тип для
+всех правил, то есть `CtrlExpr`, что в данном случае ОК, ибо задача довольно проста, но в общем случае не очень удобно.
+Почему? Потому что тогда в действиях нужно было бы писать `dynamic_cast<AType>(a.result)` при каждом байндинге -
+автоматического приведения типов я в kometa не завёз.
 
 ### Mappings
 
