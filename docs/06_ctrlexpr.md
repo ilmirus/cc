@@ -319,3 +319,67 @@ auto parse_rule(Input &input) {
 
 ### Mappings
 
+Рассмотрим теперь следующую пару правил
+```
+pp_number = `pp_number` ~ i:integer us:unsigned_suffix? { ... }
+
+`pp_number` if (token.kind == PPToken::kPPNumber) ~ Input { Input(token.value) }
+```
+
+Второе правило, маппинг, это хинт для кодогенерации и не получит свою функцию. Вместо этого оно будет встраиваться в
+первое.
+
+Поэтому код будет генерироваться для первого, основного правила. Тип будет выводиться, так как у этого правила есть
+действие.
+```
+auto parse_pp_number(PPInput &input) {
+  // ...
+}
+```
+
+А теперь распаковка
+```
+auto parse_pp_number(PPInput &input) {
+  const auto &token = input.peek();
+  if (token.kind == PPToken::kPPNumber) {
+    Input input = Input(token.value);
+    // parsing
+  } else {
+    return {};
+  }
+}
+```
+
+Пока что не думаем над тем, как типы выводить - мы уже знаем, как решать эту задачу. Парсинг будет выглядеть как
+```
+    Input input = Input(token.value);
+    if (auto i = parse_integer(input)) {
+      auto us = parse_unsigned_suffix(input);
+      return // ...
+    }
+```
+
+Ну и очевидно тело лямбды
+```
+auto parse_pp_number(PPInput &input) {
+  auto TYPE_HINTER = [](Input &input) -> decltype(auto) {
+    auto i = *parse_integer(input);
+    auto us = parse_subrule2(input);
+    return // 
+  }
+  using RETURN_TYPE = std::invoke_result_t<decltype(TYPE_HINTER), Input)>;
+
+  auto safepoint = input;
+  const auto &token = input.peek();
+  if (token.kind == PPToken::kPPNumber) {
+    Input input = Input(token.value);
+    if (auto i = parse_integer(input)) {
+      auto us = parse_unsigned_suffix(input);
+      return // ...
+    }
+  }
+
+  input = safepoint;
+  return std::optional<RETURN_TYPE>{};
+}
+```

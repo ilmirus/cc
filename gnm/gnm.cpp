@@ -14,7 +14,7 @@
 
 using namespace std::string_literals;
 
-void check_for_duplicates(Grammar &grammar) {
+static void check_for_duplicates(Grammar &grammar) {
   std::set<std::string> seen;
   for (auto &rule: grammar.rules) {
     if (seen.contains(rule.name.value))
@@ -24,9 +24,9 @@ void check_for_duplicates(Grammar &grammar) {
   }
 }
 
-void color(Rule &, const std::string &, Grammar &);
+static void color(Rule &, const std::string &, Grammar &);
 
-void color(Expression *expr, const std::string &new_color, Grammar &grammar) {
+static void color(Expression *expr, const std::string &new_color, Grammar &grammar) {
   std::vector<Name *> result;
   for (auto &seq: *expr) {
     for (auto &primary: seq) {
@@ -39,7 +39,7 @@ void color(Expression *expr, const std::string &new_color, Grammar &grammar) {
   }
 }
 
-void color(Rule &rule, const std::string &initial_color, Grammar &grammar) {
+static void color(Rule &rule, const std::string &initial_color, Grammar &grammar) {
   if (!rule.color.empty()) {
     if (rule.color != initial_color) {
       std::stringstream ss;
@@ -80,28 +80,28 @@ void color(Rule &rule, const std::string &initial_color, Grammar &grammar) {
   }
 }
 
-void color(Grammar &grammar) {
+static void color(Grammar &grammar) {
   if (grammar.rules.empty())
     return;
   color(grammar.rules[0], grammar.initial_color, grammar);
 }
 
-void prepend_indent(std::stringstream &ss, size_t indent) {
+static void prepend_indent(std::stringstream &ss, size_t indent) {
   for (size_t i = 0; i < indent; i++) {
     ss << ' ';
   }
 }
 
-std::string leftpad(size_t indent) {
+static std::string leftpad(size_t indent) {
   std::stringstream ss;
   prepend_indent(ss, indent);
   return ss.str();
 }
 
-const Rule *find_actionable_rule(const Rule &rule, std::set<const Rule *> &visited, const Grammar &grammar);
-const Rule *find_actionable_rule(const Expression &expr, std::set<const Rule *> &visited, const Grammar &grammar);
+static const Rule *find_actionable_rule(const Rule &rule, std::set<const Rule *> &visited, const Grammar &grammar);
+static const Rule *find_actionable_rule(const Expression &expr, std::set<const Rule *> &visited, const Grammar &grammar);
 
-const Rule *find_actionable_rule(const Primary &primary, std::set<const Rule *> &visited, const Grammar &grammar) {
+static const Rule *find_actionable_rule(const Primary &primary, std::set<const Rule *> &visited, const Grammar &grammar) {
   if (auto *rule = primary.as_rule(grammar)) {
     return find_actionable_rule(*rule, visited, grammar);
   }
@@ -111,7 +111,7 @@ const Rule *find_actionable_rule(const Primary &primary, std::set<const Rule *> 
   return nullptr;
 }
 
-const Rule *find_actionable_rule(const Expression &expr, std::set<const Rule *> &visited, const Grammar &grammar) {
+static const Rule *find_actionable_rule(const Expression &expr, std::set<const Rule *> &visited, const Grammar &grammar) {
   for (const auto &seq: expr) {
     for (const auto &primary: seq) {
       if (auto res = find_actionable_rule(primary, visited, grammar))
@@ -121,7 +121,7 @@ const Rule *find_actionable_rule(const Expression &expr, std::set<const Rule *> 
   return nullptr;
 }
 
-const Rule *find_actionable_rule(
+static const Rule *find_actionable_rule(
   const std::vector<Binding> &bindings, std::set<const Rule *> &visited, const Grammar &grammar
 ) {
   for (auto &[_, primary]: bindings) {
@@ -131,7 +131,7 @@ const Rule *find_actionable_rule(
   return nullptr;
 }
 
-const Rule *find_actionable_rule(const Rule &rule, std::set<const Rule *> &visited, const Grammar &grammar) {
+static const Rule *find_actionable_rule(const Rule &rule, std::set<const Rule *> &visited, const Grammar &grammar) {
   if (visited.contains(&rule))
     return nullptr;
   visited.insert(&rule);
@@ -160,55 +160,97 @@ const Rule *find_actionable_rule(const Rule &rule, std::set<const Rule *> &visit
   return nullptr;
 }
 
-void generate(std::ostream &ss, const Primary &primary, size_t indent, const Grammar &grammar) {
+static void generate_call(std::ostream &ss, const Primary &primary) {
   if (auto *name = primary.as_name()) {
-    ss << leftpad(indent) << "if (auto result = parse_" << name->value << "(input))\n";
+    ss << "parse_" << name->value << "(input)";
   } else {
-    throw std::logic_error("TODO: implement");
+    throw std::logic_error("TODO: implement primary");
   }
-  ss << leftpad(indent) << "  return result;\n\n";
 }
 
-void generate(std::ostream &ss, const std::vector<Primary> &seq, size_t indent, const Grammar &grammar) {
+static void generate_alternative_branch(std::ostream &ss, const std::vector<Primary> &seq, size_t indent, const Grammar &grammar) {
   if (seq.size() != 1)
     throw std::logic_error("TODO: implement");
 
-  generate(ss, seq[0], indent, grammar);
+  ss << leftpad(indent) << "if (auto result = ";
+  generate_call(ss, seq[0]);
+  ss << ")\n";
+  ss << leftpad(indent) << "  return result;\n\n";
 }
 
-void generate(std::ostream &ss, const Expression &expr, size_t indent, const Grammar &grammar) {
+static void generate_alternative(std::ostream &ss, const Expression &expr, size_t indent, const Grammar &grammar) {
   ss << leftpad(indent) << "auto safepoint = input;\n";
   for (auto &seq : expr) {
-    generate(ss, seq, indent, grammar);
+    generate_alternative_branch(ss, seq, indent, grammar);
   }
   ss << leftpad(indent) << "input = safepoint;\n";
   ss << leftpad(indent) << "return {};\n";
 }
 
-void generate(std::ostream &ss, const OrExpression &expr, size_t indent, const Grammar &grammar) {
+static void generate_or(std::ostream &ss, const OrExpression &expr, size_t indent, const Grammar &grammar) {
   if (!expr.action.empty())
-    throw std::logic_error("TODO: implement");
+    throw std::logic_error("TODO: implement or");
 
-  generate(ss, expr.expr, indent, grammar);
+  generate_alternative(ss, expr.expr, indent, grammar);
 }
 
-void generate(std::ostream &ss, const Rule &rule, const Grammar &grammar) {
+static void generate_unpack(
+  std::ostream &ss, const PayloadUnpack &unpack, size_t indent, const Grammar &grammar, const Name &rule_name
+) {
+  if (unpack.action.empty())
+    throw std::runtime_error(std::format("payload unpack {} should have action", rule_name.value));
+
+  // Print the mapping as well
+  ss << leftpad(indent) << "// ";
+  auto *mapping = grammar.symbol_table.at(unpack.mapping_name);
+  pretty_print(ss, *mapping, grammar);
+  ss << "\n";
+
+  // TYPE_HINTER lambda
+  const auto &color = mapping->as_mapping()->payload_type;
+  ss << leftpad(indent) << "auto TYPE_HINTER = [](" << color << " &input) -> decltype(auto) {" << "\n";
+  indent += 2;
+  if (unpack.expr) {
+    for (const auto &binding: unpack.expr->bindings) {
+      if (!binding.binding.empty()) {
+        ss << leftpad(indent) << "auto " << binding.binding << " = ";
+        if (binding.primary.suffix == Primary::kNone) {
+          ss << "*";
+        }
+        generate_call(ss, binding.primary);
+        ss << ";\n";
+      }
+    }
+  }
+  ss << leftpad(indent) << "return " << unwrap_action(unpack.action) << ";\n";
+  indent -= 2;
+  ss << leftpad(indent) << "}\n";
+  ss << leftpad(indent) << "using RETURN_TYPE = std::invoke_result_t<decltype(TYPE_HINTER), " << color << ")>;\n";
+
+
+  throw std::logic_error("TODO: to debug");
+}
+
+static void generate_rule(std::ostream &ss, const Rule &rule, const Grammar &grammar) {
   // Function header
   ss << "// ";
   pretty_print(ss, rule, grammar);
   ss << "\n";
-  ss << "auto parse_" << rule.name.value << "(" << rule.color << "&input) ";
+  ss << "auto parse_" << rule.name.value << "(" << rule.color << " &input) ";
 
   std::set<const Rule *> visited;
-  auto *rule_for_type_deduction = find_actionable_rule(rule, visited, grammar);
-  if (&rule != rule_for_type_deduction) {
+  if (auto *rule_for_type_deduction = find_actionable_rule(rule, visited, grammar);
+    &rule != rule_for_type_deduction
+  ) {
     ss << "-> std::optional<std::invoke_result_t<decltype(parse_" << rule_for_type_deduction->name.value << "), ";
     ss << rule_for_type_deduction->color << ">> ";
   }
   ss << "{\n";
 
   if (auto *alternative = rule.as_alternative()) {
-    generate(ss, *alternative, 2, grammar);
+    generate_or(ss, *alternative, 2, grammar);
+  } else if (auto *unpack = rule.as_unpack()) {
+    generate_unpack(ss, *unpack, 2, grammar, rule.name);
   } else {
     throw std::logic_error("TODO: implement");
   }
@@ -216,9 +258,9 @@ void generate(std::ostream &ss, const Rule &rule, const Grammar &grammar) {
   ss << "}\n\n";
 }
 
-void generate(std::stringstream &ss, const Grammar &grammar) {
+static void generate(std::stringstream &ss, const Grammar &grammar) {
   for (auto &rule: grammar.rules) {
-    generate(ss, rule, grammar);
+    generate_rule(ss, rule, grammar);
   }
 }
 
@@ -235,6 +277,6 @@ int main(int argc, char **argv) {
   check_for_duplicates(grammar);
   color(grammar);
 
-  generate(std::cout, grammar.rules[0], grammar);
+  generate_rule(std::cout, grammar.rules[1], grammar);
   return 0;
 }

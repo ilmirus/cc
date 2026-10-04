@@ -47,6 +47,9 @@ std::string parse_identifier(Input &input);
 // action = { (action|[^}])* }
 std::string parse_action(Input &input, const std::string &name);
 
+// trim { and } from action string
+std::string unwrap_action(const std::string &action);
+
 // grouping = parens | square
 // parens = '(' (grouping | [^)])* ')'
 // square = '[' (grouping | [^\]])* ']'

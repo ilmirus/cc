@@ -4,6 +4,8 @@
 #include <iostream>
 #include <sstream>
 
+#include "utils/string_utils.h"
+
 bool Input::starts_with(const std::string &str) {
   auto safepoint = offset;
   for (char c: str) {
@@ -61,6 +63,14 @@ std::string parse_action(Input &input, const std::string &name) {
   result << c;
   input.skip();
   return result.str();
+}
+
+std::string unwrap_action(const std::string &action) {
+  std::string s = string_trim(action);
+  if (s.starts_with('{') && s.ends_with('}')) {
+    return string_trim(s.substr(1, s.size() - 2));
+  }
+  return s;
 }
 
 std::string parse_grouping(Input &input, const std::string &rule_name, char begin, char end) {

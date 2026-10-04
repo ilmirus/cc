@@ -313,14 +313,6 @@ void analyze_and_inline(std::vector<Rule> &rules) {
   }
 }
 
-std::string unwrap_action(const std::string &action) {
-  std::string s = string_trim(action);
-  if (s.starts_with('{') && s.ends_with('}')) {
-    return s.substr(1, s.size() - 2);
-  }
-  return s;
-}
-
 static std::string choose_raw_string_delimiter(const std::string &content) {
   if (content.find(")\"") == std::string::npos) {
     return "";
