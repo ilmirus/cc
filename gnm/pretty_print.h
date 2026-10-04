@@ -8,3 +8,4 @@ void pretty_print(std::ostream &os, const Grammar &grammar);
 void pretty_print(std::ostream &os, const Rule &rule, const Grammar &grammar);
 void pretty_print(std::ostream &os, const Name &name, const Grammar &grammar);
 void pretty_print(std::ostream &os, const Primary &primary, const Grammar &grammar);
+void pretty_print(std::ostream &os, const Mapping &m);

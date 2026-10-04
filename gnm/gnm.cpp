@@ -1,3 +1,4 @@
+#include <format>
 #include <optional>
 #include <set>
 #include <sstream>
@@ -5,6 +6,7 @@
 #include <string>
 #include <variant>
 #include <vector>
+#include <cstddef>
 
 #include "ast.h"
 #include "lex/grammar_common.h"
@@ -201,20 +203,20 @@ static void generate_unpack(
     throw std::runtime_error(std::format("payload unpack {} should have action", rule_name.value));
 
   // Print the mapping as well
-  ss << leftpad(indent) << "// ";
-  auto *mapping = grammar.symbol_table.at(unpack.mapping_name);
-  pretty_print(ss, *mapping, grammar);
+  ss << leftpad(indent) << "// " << unpack.mapping_name.value << " = ";
+  auto *mapping = grammar.symbol_table.at(unpack.mapping_name)->as_mapping();
+  pretty_print(ss, *mapping);
   ss << "\n";
 
   // TYPE_HINTER lambda
-  const auto &color = mapping->as_mapping()->payload_type;
+  const auto &color = mapping->payload_type;
   ss << leftpad(indent) << "auto TYPE_HINTER = [](" << color << " &input) -> decltype(auto) {" << "\n";
   indent += 2;
   if (unpack.expr) {
     for (const auto &binding: unpack.expr->bindings) {
       if (!binding.binding.empty()) {
         ss << leftpad(indent) << "auto " << binding.binding << " = ";
-        if (binding.primary.suffix == Primary::kNone) {
+        if (binding.primary.suffix != Primary::kZeroOrOne) {
           ss << "*";
         }
         generate_call(ss, binding.primary);
@@ -225,10 +227,61 @@ static void generate_unpack(
   ss << leftpad(indent) << "return " << unwrap_action(unpack.action) << ";\n";
   indent -= 2;
   ss << leftpad(indent) << "}\n";
-  ss << leftpad(indent) << "using RETURN_TYPE = std::invoke_result_t<decltype(TYPE_HINTER), " << color << ")>;\n";
+  ss << leftpad(indent) << "using RETURN_TYPE = std::invoke_result_t<decltype(TYPE_HINTER), " << color << ")>;\n\n";
 
+  ss << leftpad(indent) << "auto safepoint = input;\n";
+  ss << leftpad(indent) << "const auto &token = input.peek();\n";
+  ss << leftpad(indent) << "if " << mapping->condition << " {\n";
+  indent += 2;
+  if (unpack.expr) {
+    // All the ifs and bindings
+    for (const auto &binding: unpack.expr->bindings) {
+      if (!binding.binding.empty()) {
+        if (const auto *name = binding.primary.as_name()) {
+          switch (binding.primary.suffix) {
+            case Primary::kZeroOrOne:
+              ss << leftpad(indent) << "auto " << binding.binding << " = parse_" << name->value << "(input);\n";
+              break;
+            case Primary::kNone:
+              ss << leftpad(indent) << "if (auto " << binding.binding << "_opt = parse_" << name->value << "(input)) {\n";
+              indent += 2;
+              ss << leftpad(indent) << "auto " << binding.binding << " = *" << binding.binding << "_opt;\n";
+              break;
+            default:
+              throw std::logic_error("TODO: support other primary suffixes");
+          }
+        }
+      }
+    }
 
-  throw std::logic_error("TODO: to debug");
+    ss << leftpad(indent) << "return " << unwrap_action(unpack.action) << ";\n";
+
+    // All the closing brackets
+    for (auto i = static_cast<std::ptrdiff_t>(unpack.expr->bindings.size()) - 1; i >= 0; i--) {
+      const auto &binding = unpack.expr->bindings[i];
+      if (!binding.binding.empty()) {
+        if (const auto *name = binding.primary.as_name()) {
+          switch (binding.primary.suffix) {
+            case Primary::kZeroOrOne:
+              // nothing to do - pass std::optional to action
+              break;
+            case Primary::kNone:
+              indent -= 2;
+              ss << leftpad(indent) << "}\n";
+              break;
+            default:
+              throw std::logic_error("TODO: support other primary suffixes");
+          }
+        }
+      }
+    }
+  }
+  indent -= 2;
+  ss << leftpad(indent) << "}\n\n";
+
+  ss << leftpad(indent) << "input = safepoint;\n";
+  ss << leftpad(indent) << "return std::optional<TYPE_HINTER>();\n";
+  indent -= 2;
 }
 
 static void generate_rule(std::ostream &ss, const Rule &rule, const Grammar &grammar) {

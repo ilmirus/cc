@@ -119,7 +119,7 @@ static void pretty_print(std::ostream &os, const PayloadUnpack &pa, const Gramma
   }
 }
 
-static void pretty_print(std::ostream &os, const Mapping &m) {
+void pretty_print(std::ostream &os, const Mapping &m) {
   os << "if " << m.condition;
   if (!m.payload_type.empty()) {
     os << " ~ " << m.payload_type << " " << m.unpack_action;

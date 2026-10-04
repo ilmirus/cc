@@ -24,7 +24,7 @@ static Locus calculate_locus(
     // ReSharper disable once CppDFAUnusedValue
     last_line_size = prefix.size();
   }
-  return Locus{file, lines + 1, last_line_size + 1};
+  return Locus{file, static_cast<size_t>(lines) + 1, last_line_size + 1};
 }
 
 std::vector<PPToken> pp_scan(const std::string &file, const std::string &input) {
