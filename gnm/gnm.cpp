@@ -162,20 +162,16 @@ static const Rule *find_actionable_rule(const Rule &rule, std::set<const Rule *>
   return nullptr;
 }
 
-static void generate_call(std::ostream &ss, const Primary &primary) {
-  if (auto *name = primary.as_name()) {
-    ss << "parse_" << name->value << "(input)";
-  } else {
-    throw std::logic_error("TODO: implement primary");
-  }
-}
-
 static void generate_alternative_branch(std::ostream &ss, const std::vector<Primary> &seq, size_t indent, const Grammar &grammar) {
   if (seq.size() != 1)
     throw std::logic_error("TODO: implement");
 
-  ss << leftpad(indent) << "if (auto result = ";
-  generate_call(ss, seq[0]);
+  if (auto *name = seq[0].as_name()) {
+    ss << leftpad(indent) << "if (auto result = parse_" << name->value << "(input)";
+  } else {
+    throw std::logic_error("TODO: implement primary");
+  }
+  
   ss << ")\n";
   ss << leftpad(indent) << "  return result;\n\n";
 }
@@ -215,12 +211,21 @@ static void generate_unpack(
   if (unpack.expr) {
     for (const auto &binding: unpack.expr->bindings) {
       if (!binding.binding.empty()) {
-        ss << leftpad(indent) << "auto " << binding.binding << " = ";
-        if (binding.primary.suffix != Primary::kZeroOrOne) {
-          ss << "*";
+        if (auto name = binding.primary.as_name()) {
+          switch (binding.primary.suffix) {
+            case Primary::kZeroOrOne:
+              ss << leftpad(indent) << "auto " << binding.binding << " = parse_" << name->value << "(input);\n";
+              break;
+            case Primary::kNone:
+              ss << leftpad(indent) << "auto " << binding.binding << " = *parse_" << name->value << "(input);\n";
+              break;
+            default:
+              throw std::logic_error("TODO: support other primary suffixes");
+          }
+          ss << "std::string it;\n";
+        } else {
+          throw std::logic_error("TODO: support other primary kinds");
         }
-        generate_call(ss, binding.primary);
-        ss << ";\n";
       }
     }
   }
@@ -250,10 +255,13 @@ static void generate_unpack(
             default:
               throw std::logic_error("TODO: support other primary suffixes");
           }
+        } else {
+          throw std::logic_error("TODO: support other primary kinds");
         }
       }
     }
 
+    ss << leftpad(indent) << "std::string it = safepoint - input;\n";
     ss << leftpad(indent) << "return " << unwrap_action(unpack.action) << ";\n";
 
     // All the closing brackets
@@ -272,6 +280,8 @@ static void generate_unpack(
             default:
               throw std::logic_error("TODO: support other primary suffixes");
           }
+        } else {
+          throw std::logic_error("TODO: support other primary kinds");
         }
       }
     }
@@ -292,11 +302,11 @@ static void generate_rule(std::ostream &ss, const Rule &rule, const Grammar &gra
   ss << "auto parse_" << rule.name.value << "(" << rule.color << " &input) ";
 
   std::set<const Rule *> visited;
-  if (auto *rule_for_type_deduction = find_actionable_rule(rule, visited, grammar);
-    &rule != rule_for_type_deduction
-  ) {
-    ss << "-> std::optional<std::invoke_result_t<decltype(parse_" << rule_for_type_deduction->name.value << "), ";
-    ss << rule_for_type_deduction->color << ">> ";
+  if (auto *rule_for_type_deduction = find_actionable_rule(rule, visited, grammar)) {
+    if (&rule != rule_for_type_deduction) {
+      ss << "-> std::optional<std::invoke_result_t<decltype(parse_" << rule_for_type_deduction->name.value << "), ";
+      ss << rule_for_type_deduction->color << ">> ";
+    }
   }
   ss << "{\n";
 
@@ -330,6 +340,8 @@ int main(int argc, char **argv) {
   check_for_duplicates(grammar);
   color(grammar);
 
+  generate_rule(std::cout, grammar.rules[0], grammar);
   generate_rule(std::cout, grammar.rules[1], grammar);
+  generate_rule(std::cout, grammar.rules[2], grammar);
   return 0;
 }

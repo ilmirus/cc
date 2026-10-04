@@ -6,9 +6,9 @@ pp_number = `pp_number` ~ i:integer us:unsigned_suffix? { us.empty() ? CtrlExpr 
 
 integer = hex_integer | oct_integer | dec_integer
 
-hex_integer = 0 (x | X) hex_digit+
-oct_integer = 0 oct_digit+
-dec_integer = dec_digit+
+hex_integer = 0 (x | X) hex_digit+ { string_to_integer(it, 16) }
+oct_integer = 0 oct_digit+ { string_to_integer(it, 8) }
+dec_integer = dec_digit+ { string_to_integer(it, 10) }
 
 unsigned_suffix = u l? l?
                 | U l? l?
