@@ -2,3 +2,5 @@
 .cache
 cmake-build-debug/
 **.pdb
+.vscode
+build.bat

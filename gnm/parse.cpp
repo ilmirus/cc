@@ -326,17 +326,19 @@ static std::optional<PayloadUnpack> parse_payload_unpack_safe(Input &input, cons
   return PayloadUnpack{mapping_name, expr, action};
 }
 
-static OrExpression parse_or_expression(Input &input, const Name &name) {
-  auto expr = parse_expression(input);
-  input.skip_ws();
-  std::string action;
-  if (input.peek() == '{') {
-    action = parse_action(input, name.value);
+static BoundExpression expression_to_bound_expression(Expression &&expression, std::string &&action, const std::string &name) {
+  if (expression.size() != 1) {
+    throw std::runtime_error("Expression in " + name + " cannot both be an alternative and have an action");
   }
-  return OrExpression{expr, action};
+  std::vector<Binding> bindings;
+  bindings.reserve(expression[0].size());
+  for (auto &&primary : std::move(expression[0])) {
+    bindings.emplace_back("", primary);
+  }
+  return BoundExpression{bindings, action};
 }
 
-// rule = rule_start (expression action?) | (mapping_name ~ expression? action)
+// rule = rule_start (mapping_name ~ expression? action) | (bound_expression action?) | (expression !action)
 static std::optional<Rule> parse_rule_safe(Input &input) {
   if (auto name = parse_rule_start_safe(input)) {
 
@@ -351,8 +353,14 @@ static std::optional<Rule> parse_rule_safe(Input &input) {
     if (auto bound_expression = parse_bound_expression_safe(input, *name)) {
       return Rule{*name, "", *bound_expression};
     }
-
-    return Rule{*name, "", parse_or_expression(input, *name)};
+    // Otherwise, it is just an expression
+    auto expression = parse_expression(input);
+    input.skip_ws();
+    if (input.peek() == '{') {
+      auto action = parse_action(input, name->value);
+      return Rule{*name, "", expression_to_bound_expression(std::move(expression), std::move(action), name->value)};
+    }
+    return Rule{*name, "", expression};
   }
   return {};
 }

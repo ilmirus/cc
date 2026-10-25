@@ -60,7 +60,7 @@ static void color(Rule &rule, const std::string &initial_color, Grammar &grammar
       }
     }
   } else if (auto *alternative = rule.as_alternative()) {
-    color(&alternative->expr, initial_color, grammar);
+    color(alternative, initial_color, grammar);
   } else if (auto *unpack = rule.as_unpack()) {
     auto &[mapping_name, unpacking, _] = *unpack;
     if (auto *resolved = mapping_name.as_rule(grammar)) {
@@ -143,9 +143,7 @@ static const Rule *find_actionable_rule(const Rule &rule, std::set<const Rule *>
     return find_actionable_rule(bound->bindings, visited, grammar);
   }
   if (auto *expr = rule.as_alternative()) {
-    if (!expr->action.empty())
-      return &rule;
-    return find_actionable_rule(expr->expr, visited, grammar);
+    return find_actionable_rule(*expr, visited, grammar);
   }
   if (auto *unpack = rule.as_unpack()) {
     if (!unpack->action.empty())
@@ -185,11 +183,146 @@ static void generate_alternative(std::ostream &ss, const Expression &expr, size_
   ss << leftpad(indent) << "return {};\n";
 }
 
-static void generate_or(std::ostream &ss, const OrExpression &expr, size_t indent, const Grammar &grammar) {
-  if (!expr.action.empty())
-    throw std::logic_error("TODO: implement or");
+// Every actionable rule - bound_expression and payload_unpack generate the lambda,
+// however, bound_expression does not have unpack condition, and payload_unpack may skip bound_expression
+// and generate the action right away.
+static void generate_bound_expression_common(
+  std::ostream &ss, 
+  const BoundExpression *bound_expression, const Mapping *mapping,
+  size_t indent,
+  const std::string& color, const std::string &action
+) {
+  ss << leftpad(indent) << "auto TYPE_HINTER = [](" << color << " &input) -> decltype(auto) {" << "\n";
+  indent += 2;
+  if (bound_expression) {
+    for (const auto &binding: bound_expression->bindings) {
+      if (binding.binding.empty()) {
+        // Nothing to do - unbound expressions do not contribute to resulting action type
+        continue;
+      }
+      if (auto *name = binding.primary.as_name()) {
+        switch (binding.primary.suffix) {
+          case Primary::kZeroOrOne:
+            ss << leftpad(indent) << "auto " << binding.binding << " = " << "parse_" << name->value << "(input);\n";
+            break;
+          case Primary::kNone:
+            ss << leftpad(indent) << "auto " << binding.binding << " = *" << "parse_" << name->value << "(input);\n";
+            break;
+          default:
+            throw std::logic_error("TODO: support other primary suffixes");
+        }
+      } else {
+        throw std::logic_error("TODO: support other primary kinds");
+      }
+    }
+  }
 
-  generate_alternative(ss, expr.expr, indent, grammar);
+  ss << leftpad(indent) << "std::string it;\n";
+  ss << leftpad(indent) << "return " << unwrap_action(action) << ";\n";
+  indent -= 2;
+  ss << leftpad(indent) << "}\n";
+  ss << leftpad(indent) << "using RETURN_TYPE = std::invoke_result_t<decltype(TYPE_HINTER), " << color << ")>;\n\n";
+
+  ss << leftpad(indent) << "auto safepoint = input;\n";
+  if (mapping) {
+    ss << leftpad(indent) << "const auto &token = input.peek();\n";
+    ss << leftpad(indent) << "if " << mapping->condition << " {\n";
+    indent += 2;
+    ss << leftpad(indent) << "auto input = " << mapping->unpack_action << ";\n";
+  }
+
+  if (bound_expression) {
+    // All the ifs and bindings
+    for (const auto &binding: bound_expression->bindings) {
+      if (const auto *name = binding.primary.as_name()) {
+        switch (binding.primary.suffix) {
+          case Primary::kZeroOrOne:
+            ss << leftpad(indent);
+            if (!binding.binding.empty()) {
+              ss << "auto " << binding.binding << " = ";
+            }
+            ss << "parse_" << name->value << "(input);\n";
+            break;
+          case Primary::kNone:
+            if (!binding.binding.empty()) {
+              ss << leftpad(indent) << "if (auto " << binding.binding << "_opt = parse_" << name->value << "(input)) {\n";
+              indent += 2;
+              ss << leftpad(indent) << "auto " << binding.binding << " = *" << binding.binding << "_opt;\n";
+            } else {
+              ss << leftpad(indent) << "if (parse_" << name->value << "(input)) {\n";
+              indent += 2;
+            }
+            break;
+          default:
+            throw std::logic_error("TODO: support other primary suffixes");
+        }
+      } else if (const auto *number = binding.primary.as_number()) {
+        if (!binding.binding.empty()) {
+          ss << leftpad(indent) << "std::string " << binding.binding << ";\n";
+        }
+        ss << leftpad(indent) << "if (input.starts_with(\"" << *number << "\")) {\n";
+        indent += 2;
+        ss << leftpad(indent) << "input.skip(" << number->size() << ");\n";
+        if (!binding.binding.empty()) {
+          ss << leftpad(indent) << binding.binding << " = \"" << *number << "\";\n";
+        }
+        indent -= 2;
+        ss << leftpad(indent) << "} else {\n";
+        indent += 2;
+        ss << leftpad(indent) << "return std::optional<TYPE_HINTER>();\n";
+        indent -= 2;
+        ss << leftpad(indent) << "}\n";
+      } else if (const auto *subexpr = binding.primary.as_grouping()) {
+        throw std::logic_error("TODO: Support groupings");
+      } else {
+        throw std::logic_error("TODO: support other primary kinds");
+      }
+    }
+  }
+
+  if (!action.empty()) {
+    ss << leftpad(indent) << "std::string it = safepoint - input;\n";
+    ss << leftpad(indent) << "return " << unwrap_action(action) << ";\n";
+  } else {
+    throw std::logic_error("TODO: support empty action");
+  }
+
+  if (bound_expression) {
+    // All the closing brackets
+    for (auto i = static_cast<std::ptrdiff_t>(bound_expression->bindings.size()) - 1; i >= 0; i--) {
+      const auto &binding = bound_expression->bindings[i];
+      if (const auto *name = binding.primary.as_name()) {
+        switch (binding.primary.suffix) {
+          case Primary::kZeroOrOne:
+            // nothing to do - pass std::optional to action
+            break;
+          case Primary::kNone:
+            indent -= 2;
+            ss << leftpad(indent) << "}\n";
+            break;
+          default:
+            throw std::logic_error("TODO: support other primary suffixes");
+        }
+      } else if (binding.primary.as_number()) {
+        // Nothing to do.
+      } else {
+        throw std::logic_error("TODO: support other primary kinds");
+      }
+    }
+  }
+
+  if (mapping) {
+    indent -= 2;
+    ss << leftpad(indent) << "}\n\n";
+  }
+
+  ss << leftpad(indent) << "input = safepoint;\n";
+  ss << leftpad(indent) << "return std::optional<TYPE_HINTER>();\n";
+  indent -= 2;
+}
+
+static void generate_bound_expression(std::ostream &ss, const BoundExpression &bound_expression, size_t indent, const std::string &color) {
+  generate_bound_expression_common(ss, &bound_expression, nullptr, indent, color, bound_expression.action);
 }
 
 static void generate_unpack(
@@ -204,94 +337,7 @@ static void generate_unpack(
   pretty_print(ss, *mapping);
   ss << "\n";
 
-  // TYPE_HINTER lambda
-  const auto &color = mapping->payload_type;
-  ss << leftpad(indent) << "auto TYPE_HINTER = [](" << color << " &input) -> decltype(auto) {" << "\n";
-  indent += 2;
-  if (unpack.expr) {
-    for (const auto &binding: unpack.expr->bindings) {
-      if (!binding.binding.empty()) {
-        if (auto name = binding.primary.as_name()) {
-          switch (binding.primary.suffix) {
-            case Primary::kZeroOrOne:
-              ss << leftpad(indent) << "auto " << binding.binding << " = parse_" << name->value << "(input);\n";
-              break;
-            case Primary::kNone:
-              ss << leftpad(indent) << "auto " << binding.binding << " = *parse_" << name->value << "(input);\n";
-              break;
-            default:
-              throw std::logic_error("TODO: support other primary suffixes");
-          }
-          ss << "std::string it;\n";
-        } else {
-          throw std::logic_error("TODO: support other primary kinds");
-        }
-      }
-    }
-  }
-  ss << leftpad(indent) << "return " << unwrap_action(unpack.action) << ";\n";
-  indent -= 2;
-  ss << leftpad(indent) << "}\n";
-  ss << leftpad(indent) << "using RETURN_TYPE = std::invoke_result_t<decltype(TYPE_HINTER), " << color << ")>;\n\n";
-
-  ss << leftpad(indent) << "auto safepoint = input;\n";
-  ss << leftpad(indent) << "const auto &token = input.peek();\n";
-  ss << leftpad(indent) << "if " << mapping->condition << " {\n";
-  indent += 2;
-  if (unpack.expr) {
-    // All the ifs and bindings
-    for (const auto &binding: unpack.expr->bindings) {
-      if (!binding.binding.empty()) {
-        if (const auto *name = binding.primary.as_name()) {
-          switch (binding.primary.suffix) {
-            case Primary::kZeroOrOne:
-              ss << leftpad(indent) << "auto " << binding.binding << " = parse_" << name->value << "(input);\n";
-              break;
-            case Primary::kNone:
-              ss << leftpad(indent) << "if (auto " << binding.binding << "_opt = parse_" << name->value << "(input)) {\n";
-              indent += 2;
-              ss << leftpad(indent) << "auto " << binding.binding << " = *" << binding.binding << "_opt;\n";
-              break;
-            default:
-              throw std::logic_error("TODO: support other primary suffixes");
-          }
-        } else {
-          throw std::logic_error("TODO: support other primary kinds");
-        }
-      }
-    }
-
-    ss << leftpad(indent) << "std::string it = safepoint - input;\n";
-    ss << leftpad(indent) << "return " << unwrap_action(unpack.action) << ";\n";
-
-    // All the closing brackets
-    for (auto i = static_cast<std::ptrdiff_t>(unpack.expr->bindings.size()) - 1; i >= 0; i--) {
-      const auto &binding = unpack.expr->bindings[i];
-      if (!binding.binding.empty()) {
-        if (const auto *name = binding.primary.as_name()) {
-          switch (binding.primary.suffix) {
-            case Primary::kZeroOrOne:
-              // nothing to do - pass std::optional to action
-              break;
-            case Primary::kNone:
-              indent -= 2;
-              ss << leftpad(indent) << "}\n";
-              break;
-            default:
-              throw std::logic_error("TODO: support other primary suffixes");
-          }
-        } else {
-          throw std::logic_error("TODO: support other primary kinds");
-        }
-      }
-    }
-  }
-  indent -= 2;
-  ss << leftpad(indent) << "}\n\n";
-
-  ss << leftpad(indent) << "input = safepoint;\n";
-  ss << leftpad(indent) << "return std::optional<TYPE_HINTER>();\n";
-  indent -= 2;
+  generate_bound_expression_common(ss, &*unpack.expr, mapping, indent, mapping->payload_type, unpack.action);
 }
 
 static void generate_rule(std::ostream &ss, const Rule &rule, const Grammar &grammar) {
@@ -311,9 +357,11 @@ static void generate_rule(std::ostream &ss, const Rule &rule, const Grammar &gra
   ss << "{\n";
 
   if (auto *alternative = rule.as_alternative()) {
-    generate_or(ss, *alternative, 2, grammar);
+    generate_alternative(ss, *alternative, 2, grammar);
   } else if (auto *unpack = rule.as_unpack()) {
     generate_unpack(ss, *unpack, 2, grammar, rule.name);
+  } else if (auto *bound_expression = rule.as_bound_expression()) {
+    generate_bound_expression(ss, *bound_expression, 2, rule.color);
   } else {
     throw std::logic_error("TODO: implement");
   }
@@ -343,5 +391,6 @@ int main(int argc, char **argv) {
   generate_rule(std::cout, grammar.rules[0], grammar);
   generate_rule(std::cout, grammar.rules[1], grammar);
   generate_rule(std::cout, grammar.rules[2], grammar);
+  generate_rule(std::cout, grammar.rules[3], grammar);
   return 0;
 }

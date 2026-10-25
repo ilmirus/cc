@@ -70,12 +70,12 @@ const BoundExpression *Rule::as_bound_expression() const {
   return std::get_if<BoundExpression>(&value);
 }
 
-OrExpression *Rule::as_alternative() {
-  return std::get_if<OrExpression>(&value);
+Expression *Rule::as_alternative() {
+  return std::get_if<Expression>(&value);
 }
 
-const OrExpression *Rule::as_alternative() const {
-  return std::get_if<OrExpression>(&value);
+const Expression *Rule::as_alternative() const {
+  return std::get_if<Expression>(&value);
 }
 
 PayloadUnpack *Rule::as_unpack() {

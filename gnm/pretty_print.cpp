@@ -89,13 +89,6 @@ static void pretty_print(std::ostream &os, const Expression &expression, const G
   }
 }
 
-static void pretty_print(std::ostream &os, const OrExpression &expr, const Grammar &grammar) {
-  pretty_print(os, expr.expr, grammar);
-  if (!expr.action.empty()) {
-    os << " " << expr.action;
-  }
-}
-
 static void pretty_print(std::ostream &os, const BoundExpression &expr, const Grammar &grammar) {
   for (size_t i = 0, first = true; i < expr.bindings.size(); i++, first = false) {
     if (!first) {

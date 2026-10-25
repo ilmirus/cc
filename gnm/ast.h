@@ -87,11 +87,6 @@ struct PayloadUnpack {
   std::string action;
 };
 
-struct OrExpression {
-  Expression expr;
-  std::string action;
-};
-
 struct Mapping {
   std::string condition;
   std::string payload_type;
@@ -104,7 +99,7 @@ struct Rule {
 
   std::variant<
     BoundExpression,
-    OrExpression,
+    Expression,
     PayloadUnpack,
     Mapping
   > value;
@@ -112,8 +107,8 @@ struct Rule {
   BoundExpression *as_bound_expression();
   const BoundExpression *as_bound_expression() const;
 
-  OrExpression *as_alternative();
-  const OrExpression *as_alternative() const;
+  Expression *as_alternative();
+  const Expression *as_alternative() const;
 
   PayloadUnpack *as_unpack();
   const PayloadUnpack *as_unpack() const;
