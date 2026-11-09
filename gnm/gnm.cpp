@@ -190,7 +190,8 @@ static void generate_bound_expression_common(
   std::ostream &ss, 
   const BoundExpression *bound_expression, const Mapping *mapping,
   size_t indent,
-  const std::string& color, const std::string &action
+  const std::string& color, const std::string &action, const Name &rule_name,
+  const Grammar& grammar
 ) {
   ss << leftpad(indent) << "auto TYPE_HINTER = [](" << color << " &input) -> decltype(auto) {" << "\n";
   indent += 2;
@@ -220,8 +221,8 @@ static void generate_bound_expression_common(
   ss << leftpad(indent) << "std::string it;\n";
   ss << leftpad(indent) << "return " << unwrap_action(action) << ";\n";
   indent -= 2;
-  ss << leftpad(indent) << "}\n";
-  ss << leftpad(indent) << "using RETURN_TYPE = std::invoke_result_t<decltype(TYPE_HINTER), " << color << ")>;\n\n";
+  ss << leftpad(indent) << "};\n";
+  ss << leftpad(indent) << "using RETURN_TYPE = std::invoke_result_t<decltype(TYPE_HINTER), " << color << "&>;\n\n";
 
   ss << leftpad(indent) << "auto safepoint = input;\n";
   if (mapping) {
@@ -235,6 +236,7 @@ static void generate_bound_expression_common(
     // All the ifs and bindings
     for (const auto &binding: bound_expression->bindings) {
       if (const auto *name = binding.primary.as_name()) {
+        ss << "\n";
         switch (binding.primary.suffix) {
           case Primary::kZeroOrOne:
             ss << leftpad(indent);
@@ -253,10 +255,17 @@ static void generate_bound_expression_common(
               indent += 2;
             }
             break;
+          case Primary::kOneOrMore:
+            if (!binding.binding.empty()) throw std::logic_error("TODO: Support binding of +");
+            if (!grammar.symbol_table.contains(*name)) throw std::logic_error("TODO: support other primitives, not only rules in +");
+            if (name->as_rule(grammar)->as_mapping()) throw std::logic_error("TODO: support mapping in +");
+            ss << leftpad(indent) << "while (parse_" << name->value << "(input)) {}\n";
+            break;
           default:
             throw std::logic_error("TODO: support other primary suffixes");
         }
       } else if (const auto *number = binding.primary.as_number()) {
+        ss << "\n";
         if (!binding.binding.empty()) {
           ss << leftpad(indent) << "std::string " << binding.binding << ";\n";
         }
@@ -269,11 +278,28 @@ static void generate_bound_expression_common(
         indent -= 2;
         ss << leftpad(indent) << "} else {\n";
         indent += 2;
-        ss << leftpad(indent) << "return std::optional<TYPE_HINTER>();\n";
+        ss << leftpad(indent) << "input = safepoint;\n";
+        ss << leftpad(indent) << "return std::optional<RETURN_TYPE>();\n";
         indent -= 2;
         ss << leftpad(indent) << "}\n";
       } else if (const auto *subexpr = binding.primary.as_grouping()) {
-        throw std::logic_error("TODO: Support groupings");
+        ss << "\n";
+        if (!binding.binding.empty()) throw std::logic_error("TODO: support binding of subexpressions");
+        if (binding.primary.suffix != Primary::kNone) throw std::logic_error("TODO: support primary suffixes");
+
+        if (subexpr->empty()) {
+          throw std::runtime_error("Empty grouping in " + rule_name.value);
+        }
+        ss << leftpad(indent) << "{\n";
+        indent += 2;
+        ss << leftpad(indent) << "auto lambda = [](" << color << " &input) -> decltype(auto) {\n";
+        indent += 2;
+        generate_alternative(ss, *subexpr, indent, grammar);
+        indent -= 2;
+        ss << leftpad(indent) << "}\n";
+        ss << leftpad(indent) << "lambda(input);\n";
+        indent -= 2;
+        ss << leftpad(indent) << "}\n";
       } else {
         throw std::logic_error("TODO: support other primary kinds");
       }
@@ -281,8 +307,9 @@ static void generate_bound_expression_common(
   }
 
   if (!action.empty()) {
+    ss << "\n";
     ss << leftpad(indent) << "std::string it = safepoint - input;\n";
-    ss << leftpad(indent) << "return " << unwrap_action(action) << ";\n";
+    ss << leftpad(indent) << "return std::optional<RETURN_TYPE>(" << unwrap_action(action) << ");\n";
   } else {
     throw std::logic_error("TODO: support empty action");
   }
@@ -300,11 +327,18 @@ static void generate_bound_expression_common(
             indent -= 2;
             ss << leftpad(indent) << "}\n";
             break;
+          case Primary::kOneOrMore:
+            if (!binding.binding.empty()) throw std::logic_error("TODO: Support binding of +");
+            // nothing to do - all is matched
+            break;
           default:
             throw std::logic_error("TODO: support other primary suffixes");
         }
       } else if (binding.primary.as_number()) {
         // Nothing to do.
+      } else if (binding.primary.as_grouping()) {
+        if (!binding.binding.empty()) throw std::logic_error("TODO: support binding of subexpressions");
+        // Nothing to do
       } else {
         throw std::logic_error("TODO: support other primary kinds");
       }
@@ -317,12 +351,17 @@ static void generate_bound_expression_common(
   }
 
   ss << leftpad(indent) << "input = safepoint;\n";
-  ss << leftpad(indent) << "return std::optional<TYPE_HINTER>();\n";
+  ss << leftpad(indent) << "return std::optional<RETURN_TYPE>();\n";
   indent -= 2;
 }
 
-static void generate_bound_expression(std::ostream &ss, const BoundExpression &bound_expression, size_t indent, const std::string &color) {
-  generate_bound_expression_common(ss, &bound_expression, nullptr, indent, color, bound_expression.action);
+static void generate_bound_expression(
+  std::ostream &ss,
+  const BoundExpression &bound_expression, size_t indent,
+  const std::string &color, const Name &rule_name,
+  const Grammar& grammar
+) {
+  generate_bound_expression_common(ss, &bound_expression, nullptr, indent, color, bound_expression.action, rule_name, grammar);
 }
 
 static void generate_unpack(
@@ -337,7 +376,7 @@ static void generate_unpack(
   pretty_print(ss, *mapping);
   ss << "\n";
 
-  generate_bound_expression_common(ss, &*unpack.expr, mapping, indent, mapping->payload_type, unpack.action);
+  generate_bound_expression_common(ss, &*unpack.expr, mapping, indent, mapping->payload_type, unpack.action, rule_name, grammar);
 }
 
 static void generate_rule(std::ostream &ss, const Rule &rule, const Grammar &grammar) {
@@ -350,8 +389,8 @@ static void generate_rule(std::ostream &ss, const Rule &rule, const Grammar &gra
   std::set<const Rule *> visited;
   if (auto *rule_for_type_deduction = find_actionable_rule(rule, visited, grammar)) {
     if (&rule != rule_for_type_deduction) {
-      ss << "-> std::optional<std::invoke_result_t<decltype(parse_" << rule_for_type_deduction->name.value << "), ";
-      ss << rule_for_type_deduction->color << ">> ";
+      ss << "-> std::invoke_result_t<decltype(parse_" << rule_for_type_deduction->name.value << "), "
+         << rule_for_type_deduction->color << "> ";
     }
   }
   ss << "{\n";
@@ -361,7 +400,7 @@ static void generate_rule(std::ostream &ss, const Rule &rule, const Grammar &gra
   } else if (auto *unpack = rule.as_unpack()) {
     generate_unpack(ss, *unpack, 2, grammar, rule.name);
   } else if (auto *bound_expression = rule.as_bound_expression()) {
-    generate_bound_expression(ss, *bound_expression, 2, rule.color);
+    generate_bound_expression(ss, *bound_expression, 2, rule.color, rule.name, grammar);
   } else {
     throw std::logic_error("TODO: implement");
   }
