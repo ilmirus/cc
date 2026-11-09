@@ -193,6 +193,8 @@ static void generate_bound_expression_common(
   const std::string& color, const std::string &action, const Name &rule_name,
   const Grammar& grammar
 ) {
+  size_t initial_indent = indent;
+
   ss << leftpad(indent) << "auto TYPE_HINTER = [](" << color << " &input) -> decltype(auto) {" << "\n";
   indent += 2;
   if (bound_expression) {
@@ -310,6 +312,9 @@ static void generate_bound_expression_common(
     ss << "\n";
     ss << leftpad(indent) << "std::string it = safepoint - input;\n";
     ss << leftpad(indent) << "return std::optional<RETURN_TYPE>(" << unwrap_action(action) << ");\n";
+
+    // Do not generate dead code
+    if (initial_indent == indent) return;
   } else {
     throw std::logic_error("TODO: support empty action");
   }
